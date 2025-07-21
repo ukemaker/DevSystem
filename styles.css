@@ -17,20 +17,24 @@ body {
     font-family: var(--font-family);
     margin: 0;
     background-color: var(--background-body);
-    display: flex;
-    height: 100vh;
-    overflow: hidden; /* Prevent body scrollbars when sidebar is present */
 }
 
 input[type="text"],
 input[type="file"],
-select {
+select,
+input[type="color"] {
     width: 100%;
     padding: 8px 12px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 1rem;
+}
+
+input[type="color"] {
+    padding: 4px;
+    min-width: 40px;
+    width: auto;
 }
 
 button {
@@ -56,28 +60,25 @@ button.btn-danger:hover {
 
 
 /* --- 3. App Structure & Layout --- */
+/* Default top-bar layout for DevLibrary */
 header {
     background-color: var(--background-content);
-    border-right: 1px solid var(--border-color);
-    padding: 20px 0;
-    width: 250px;
-    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 20px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 20px;
 }
 header h1 {
-    margin: 0 20px 20px 20px;
+    margin: 0;
     padding: 0;
     font-size: 1.5rem;
-    display: block;
-    border-bottom: 1px solid var(--border-color-light);
-    padding-bottom: 15px;
 }
 
 main#content-area {
     padding: 20px;
-    flex-grow: 1;
-    overflow-y: auto; /* Allow content to scroll, not the whole page */
+    max-width: 1400px;
+    margin: 0 auto;
 }
 main#content-area h1,
 main#content-area h2 {
@@ -86,9 +87,41 @@ main#content-area h2 {
     margin-top: 0;
 }
 
+/* Sidebar layout overrides for PocketDRO */
+body.sidebar-layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+body.sidebar-layout header {
+    border-right: 1px solid var(--border-color);
+    border-bottom: none;
+    padding: 20px 0;
+    width: 250px;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+body.sidebar-layout header h1 {
+    margin: 0 20px 20px 20px;
+    display: block;
+    border-bottom: 1px solid var(--border-color-light);
+    padding-bottom: 15px;
+}
+body.sidebar-layout main#content-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    max-width: none;
+    margin: 0;
+}
+
 /* --- 4. Navigation --- */
+nav#main-nav,
 nav#sidebar-nav {
     display: flex;
+}
+nav#sidebar-nav {
     flex-direction: column;
 }
 .nav-button {
@@ -100,8 +133,12 @@ nav#sidebar-nav {
     width: 100%;
     border-radius: 0;
 }
-.nav-button.active,
 .nav-button:hover {
+    background-color: #e7f3ff;
+    color: #0056b3;
+    font-weight: bold;
+}
+.nav-button.active {
     background-color: #e7f3ff;
     color: #0056b3;
     font-weight: bold;

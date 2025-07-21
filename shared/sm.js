@@ -1,263 +1,274 @@
 /**
- * A module for dynamically managing CSS rules on the page.
- * It creates and manages a <style> tag in the document's head
- * to apply or update CSS rules on the fly.
+ * A manager for dynamically reading and updating CSS rules from a stylesheet.
  */
 class StyleManager {
-    constructor() {
-        // Find or create a dedicated <style> tag for dynamic rules.
-        let styleEl = document.querySelector('#dynamic-styles');
+    /**
+     * @param {string} stylesheetId The ID of the <link> or <style> element.
+     */
+    constructor(stylesheetId) {
+        const styleEl = document.getElementById(stylesheetId);
         if (!styleEl) {
-            styleEl = document.createElement('style');
-            styleEl.id = 'dynamic-styles';
-            document.head.appendChild(styleEl);
+            // This error will stop execution if the <link> tag is missing the ID.
+            throw new Error(`Stylesheet with id "${stylesheetId}" not found.`);
         }
-        this.sheet = styleEl.sheet;
+        
+        // The .sheet property can be null if the stylesheet hasn't loaded or is cross-origin.
+        if (!styleEl.sheet) {
+            console.warn(`Stylesheet with id "${stylesheetId}" is not yet loaded or accessible. StyleManager may not work until it is.`);
+            this.sheet = null; 
+        } else {
+            this.sheet = styleEl.sheet;
+        }
+    }
+
+    /**
+     * Normalizes a CSS color string to a 7-character hex string.
+     * @param {string} color - The CSS color string (e.g., 'red', '#f0f', 'var(--my-var)').
+     * @param {object} [variables] - An optional map of CSS variables to their values.
+     * @returns {string} A 7-character hex string (e.g., '#ff0000').
+     * @private
+     */
+    _normalizeColorToHex(color, variables = {}) {
+        let resolvedColor = color.trim();
+        // Resolve CSS variable if present
+        if (resolvedColor.startsWith('var(')) {
+            const varName = resolvedColor.substring(4, resolvedColor.length - 1);
+            if (variables[varName]) {
+                resolvedColor = variables[varName];
+            }
+        }
+
+        // Use canvas to convert any valid color format to hex
+        try {
+            const ctx = document.createElement('canvas').getContext('2d');
+            ctx.fillStyle = resolvedColor;
+            return ctx.fillStyle;
+        } catch (e) {
+            // Return a default color if the format is invalid
+            return '#000000';
+        }
     }
 
     /**
      * Sets or updates a CSS style for a given selector.
      * @param {string} selector - The CSS selector (e.g., 'body', '.btn-primary').
-     * @param {string} property - The CSS property (e.g., 'background-color').
-     * @param {string} value - The value for the CSS property.
+     * @param {string} property - The CSS property (e.g., 'color', 'background-color').
+     * @param {string} value - The new value for the property.
      */
-    setRule(selector, property, value) {
-        if (!selector || !property) {
-            console.error('Selector and property are required to set a rule.');
-            return;
+    setStyle(selector, property, value) {
+        if (!this.sheet) return;
+        const rule = Array.from(this.sheet.cssRules).find(r => r.selectorText === selector);
+        if (rule) {
+            rule.style.setProperty(property, value);
         }
-
-        // Find if a rule for this selector already exists to update it.
-        for (let i = 0; i < this.sheet.cssRules.length; i++) {
-            if (this.sheet.cssRules[i].selectorText === selector) {
-                this.sheet.cssRules[i].style.setProperty(property, value);
-                return;
-            }
-        }
-
-        // If no rule exists, insert a new one.
-        this.sheet.insertRule(`${selector} { ${property}: ${value}; }`, this.sheet.cssRules.length);
     }
 
     /**
-     * Gets all rules from a specific stylesheet loaded on the page.
-     * @param {string} sheetHref - The href (or a part of it) of the stylesheet to parse.
-     * @returns {Array<object>} An array of rule objects, each with a selector and its declarations.
+     * Retrieves all CSS variables defined in the :root scope.
+     * @returns {object} An object mapping variable names to their values.
      */
-    getAllRules(sheetHref) {
-        const allRules = [];
-        const styleSheet = Array.from(document.styleSheets).find(
-            sheet => sheet.href && sheet.href.endsWith(sheetHref)
-        );
+    getVariables() {
+        if (!this.sheet) return {};
+        const rootRule = Array.from(this.sheet.cssRules).find(rule => rule.selectorText === ':root');
+        if (!rootRule) return {};
 
-        if (!styleSheet) {
-            console.warn(`Stylesheet with href ending in '${sheetHref}' not found.`);
-            return [];
+        const variables = {};
+        for (let i = 0; i < rootRule.style.length; i++) {
+            const propName = rootRule.style[i];
+            if (propName.startsWith('--')) {
+                variables[propName] = rootRule.style.getPropertyValue(propName).trim();
+            }
+        }
+        return variables;
+    }
+
+    /**
+     * Retrieves all style rules from the stylesheet.
+     * @returns {Array<CSSStyleRule>} An array of CSS style rules.
+     */
+    getStyles() {
+        if (!this.sheet) return [];
+        // Filter out non-style rules like @media or @keyframes
+        return Array.from(this.sheet.cssRules).filter(rule => rule instanceof CSSStyleRule);
+    }
+
+    /**
+     * Renders the Style Manager UI into a given container element.
+     * @param {HTMLElement} container - The container element to render the UI into.
+     */
+    renderUI(container) {
+        if (!this.sheet) {
+            container.innerHTML = `<p>Error: Stylesheet not accessible.</p>`;
+            return;
+        }
+        container.innerHTML = ''; // Clear previous UI
+
+        const cssRules = this.getStyles();
+        const cssVariables = this.getVariables();
+
+        // --- Create Controls ---
+        const controlsGroup = document.createElement('div');
+        controlsGroup.className = 'form-group';
+
+        const dropdownLabel = document.createElement('label');
+        dropdownLabel.textContent = 'Select a CSS Rule:';
+        dropdownLabel.htmlFor = 'style-rule-selector';
+
+        const dropdown = document.createElement('select');
+        dropdown.id = 'style-rule-selector';
+        dropdown.innerHTML = '<option value="">-- Please choose a rule --</option>';
+        cssRules.forEach(rule => {
+            const option = document.createElement('option');
+            option.value = rule.selectorText;
+            option.textContent = rule.selectorText;
+            dropdown.appendChild(option);
+        });
+
+        const downloadButton = document.createElement('button');
+        downloadButton.textContent = 'Download Styles';
+        downloadButton.addEventListener('click', () => this.downloadStyles('updated-styles.css'));
+
+        controlsGroup.append(dropdownLabel, dropdown, downloadButton);
+        const editorContainer = document.createElement('div');
+        container.append(controlsGroup, editorContainer);
+
+        // Event listener for the dropdown
+        dropdown.addEventListener('change', (event) => {
+            const selectedSelector = event.target.value;
+            this._renderEditorForSelector(selectedSelector, editorContainer, cssRules, cssVariables);
+        });
+    }
+
+    /**
+     * Serializes the current state of the stylesheet and triggers a download.
+     * @param {string} [filename='updated-styles.css'] - The desired filename for the downloaded CSS file.
+     */
+    downloadStyles(filename = 'updated-styles.css') {
+        if (!this.sheet) {
+            console.error("Stylesheet not available for download.");
+            alert("Stylesheet not available for download.");
+            return;
         }
 
         try {
-            // Iterate through the rules of the found stylesheet
-            for (const rule of styleSheet.cssRules) {
+            const formattedRules = Array.from(this.sheet.cssRules).map(rule => {
+                // We only care about standard style rules for now.
+                // Others like @media would need more complex handling.
                 if (rule instanceof CSSStyleRule) {
-                    const selectorText = rule.selectorText;
-                    // We parse the raw cssText to get the original, un-computed values (like 'var(--my-var)')
-                    // and to get shorthand properties as they were written.
-                    const declarationsBlock = rule.cssText.substring(rule.cssText.indexOf('{') + 1, rule.cssText.lastIndexOf('}')).trim();
-                    const declarations = [];
+                    const selector = rule.selectorText;
+                    const style = rule.style;
+                    let declarations = '';
 
-                    if (declarationsBlock) {
-                        declarationsBlock.split(';').forEach(declStr => {
-                            if (declStr.trim()) {
-                                const [property, ...valueParts] = declStr.split(':');
-                                const value = valueParts.join(':').trim();
-                                if (property && value) {
-                                    declarations.push({ property: property.trim(), value });
-                                }
-                            }
-                        });
+                    for (let i = 0; i < style.length; i++) {
+                        const propName = style[i];
+                        const propValue = style.getPropertyValue(propName);
+                        // Indent with 4 spaces
+                        declarations += `    ${propName}: ${propValue};\n`;
                     }
-                    
-                    if (declarations.length > 0) {
-                        allRules.push({ selectorText, declarations });
+
+                    if (declarations) {
+                        return `${selector} {\n${declarations}}`;
                     }
                 }
-            }
-        } catch (e) {
-            console.error("Could not read CSS rules. This may be due to a cross-origin restriction.", e);
+                return null; // For non-standard rules, or empty rules
+            });
+
+            const cssText = formattedRules.filter(Boolean).join('\n\n');
+
+            const blob = new Blob([cssText], { type: 'text/css;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+        } catch (error) {
+            console.error("Failed to generate or download stylesheet:", error);
+            alert("An error occurred while trying to download the styles.");
         }
-        return allRules;
     }
 
     /**
-     * Renders the entire style editor UI into a given container element.
-     * @param {HTMLElement} container - The element to render the UI into.
+     * Renders the editor for a specific CSS rule.
+     * @param {string} selector - The selector of the rule to render.
+     * @param {HTMLElement} container - The container to render the editor into.
+     * @param {Array<CSSStyleRule>} cssRules - The list of all available rules.
+     * @param {object} cssVariables - The map of CSS variables.
+     * @private
      */
-    renderUI(container) {
-        if (!container) {
-            console.error("A container element must be provided to render the UI.");
-            return;
-        }
+    _renderEditorForSelector(selector, container, cssRules, cssVariables) {
+        container.innerHTML = ''; // Clear previous editor
+        if (!selector) return;
 
-        const rules = this.getAllRules('styles.css');
+        const rule = cssRules.find(r => r.selectorText === selector);
+        if (!rule) return;
 
-        // --- 1. Create UI Elements ---
-        const dropdownGroup = document.createElement('div');
-        dropdownGroup.className = 'form-group';
+        const editorWrapper = document.createElement('div');
+        editorWrapper.className = 'style-rule-editor';
 
-        const dropdownLabel = document.createElement('label');
-        dropdownLabel.htmlFor = 'style-selector-dropdown';
-        dropdownLabel.textContent = 'CSS Rule:';
+        const title = document.createElement('h3');
+        title.className = 'selector-title';
+        title.textContent = `Editing: ${selector}`;
+        editorWrapper.appendChild(title);
 
-        const dropdown = document.createElement('select');
-        dropdown.id = 'style-selector-dropdown';
-        dropdown.innerHTML = '<option value="">-- Select a Rule --</option>';
+        const declarations = Array.from(rule.style).map(prop => ({
+            property: prop,
+            value: rule.style.getPropertyValue(prop)
+        }));
 
-        dropdownGroup.append(dropdownLabel, dropdown);
+        declarations.forEach(decl => {
+            const declContainer = document.createElement('div');
+            declContainer.className = 'style-declaration';
 
-        const editorContainer = document.createElement('div');
-        // This class is now applied dynamically, not on the container
-        // editorContainer.className = 'style-rule-editor'; 
+            const propLabel = document.createElement('label');
+            propLabel.textContent = decl.property;
 
-        container.append(dropdownGroup, editorContainer);
+            const valueWrapper = document.createElement('div');
+            valueWrapper.className = 'value-wrapper';
 
-        // --- 2. Define Rendering Logic ---
-        const cssVariables = {};
-        const rootRule = rules.find(r => r.selectorText === ':root');
-        if (rootRule) {
-            rootRule.declarations.forEach(decl => {
-                cssVariables[decl.property] = decl.value.trim();
+            const valueInput = document.createElement('input');
+            valueInput.type = 'text';
+            valueInput.value = decl.value;
+
+            valueInput.addEventListener('input', (e) => {
+                this.setStyle(selector, decl.property, e.target.value);
             });
-        }
 
-        const populateDropdown = () => {
-            if (rules.length === 0) {
-                dropdown.disabled = true;
-                dropdown.innerHTML = '<option>No styles found</option>';
-                return;
+            valueWrapper.appendChild(valueInput);
+
+            // Check if this property is a color
+            const isColorProperty = /color|background-color|border-color/.test(decl.property);
+            if (isColorProperty) {
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = this._normalizeColorToHex(decl.value, cssVariables);
+
+                colorInput.addEventListener('input', () => {
+                    valueInput.value = colorInput.value;
+                    this.setStyle(selector, decl.property, colorInput.value);
+                });
+
+                valueInput.addEventListener('input', () => {
+                    colorInput.value = this._normalizeColorToHex(valueInput.value, cssVariables);
+                });
+
+                valueWrapper.prepend(colorInput);
             }
-            rules.forEach((rule, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                // Make the :root selector more user-friendly in the UI
-                if (rule.selectorText === ':root') {
-                    option.textContent = 'CSS Variables (:root)';
-                } else {
-                    option.textContent = rule.selectorText;
-                }
-                dropdown.appendChild(option);
-            });
-        };
 
-        const renderEditor = (ruleIndex) => {
-            editorContainer.innerHTML = '';
-            if (ruleIndex === '' || ruleIndex === null) return;
+            declContainer.append(propLabel, valueWrapper);
+            editorWrapper.appendChild(declContainer);
+        });
 
-            const rule = rules[ruleIndex];
-            if (!rule) return;
-
-            const ruleWrapper = document.createElement('div');
-            ruleWrapper.className = 'style-rule-editor';
-
-            const controlsContainer = document.createElement('div');
-            const previewBox = document.createElement('h3');
-            previewBox.className = 'editor-preview';
-            previewBox.textContent = 'Example';
-
-            const selectorTitle = document.createElement('h3');
-            selectorTitle.className = 'selector-title';
-            selectorTitle.textContent = rule.selectorText;
-            controlsContainer.appendChild(selectorTitle);
-
-            rule.declarations.forEach(decl => {
-                const declContainer = document.createElement('div');
-                declContainer.className = 'style-declaration';
-
-                const propInput = document.createElement('input');
-                propInput.type = 'text';
-                propInput.value = decl.property;
-                propInput.readOnly = true;
-
-                const valueWrapper = document.createElement('div');
-                valueWrapper.className = 'value-wrapper';
-
-                const valueInput = document.createElement('input');
-                valueInput.type = 'text';
-                valueInput.value = decl.value;
-                valueWrapper.appendChild(valueInput);
-
-                // If the value is a CSS variable, show its resolved value.
-                const valueStr = decl.value.trim();
-                if (valueStr.startsWith('var(')) {
-                    const varName = valueStr.substring(4, valueStr.length - 1);
-                    if (cssVariables[varName]) {
-                        const resolvedValueSpan = document.createElement('span');
-                        resolvedValueSpan.className = 'resolved-value';
-                        resolvedValueSpan.textContent = `(${cssVariables[varName]})`;
-                        valueWrapper.appendChild(resolvedValueSpan);
-                    }
-                }
-
-                // Only show a color picker for properties that are explicitly for colors.
-                let isColorProperty = false;
-                if (decl.property.startsWith('--')) {
-                    // For CSS variables, be more lenient. Check for 'color' or 'background'.
-                    isColorProperty = /color|background/i.test(decl.property);
-                } else {
-                    // For standard properties, be very specific.
-                    isColorProperty = /(^color|(-color)$)/i.test(decl.property);
-                }
-                if (isColorProperty) {
-                    const colorInput = document.createElement('input');
-                    colorInput.type = 'color';
-
-                    let resolvedValue = decl.value.trim();
-                    if (resolvedValue.startsWith('var(')) {
-                        const varName = resolvedValue.substring(4, resolvedValue.length - 1);
-                        if (cssVariables[varName]) {
-                            resolvedValue = cssVariables[varName];
-                        }
-                    }
-                    colorInput.value = resolvedValue;
-
-                    colorInput.addEventListener('input', () => {
-                        valueInput.value = colorInput.value;
-                    });
-
-                    valueInput.addEventListener('input', () => {
-                        let textValue = valueInput.value.trim();
-                        if (textValue.startsWith('var(')) {
-                            const varName = textValue.substring(4, textValue.length - 1);
-                            if (cssVariables[varName]) {
-                                textValue = cssVariables[varName];
-                            }
-                        }
-                        colorInput.value = textValue;
-                    });
-
-                    valueWrapper.prepend(colorInput);
-                }
-
-                const updateBtn = document.createElement('button');
-                updateBtn.textContent = 'Update';
-                updateBtn.onclick = () => {
-                    const newValue = valueInput.value.trim();
-                    this.setRule(rule.selectorText, decl.property, newValue);
-                    previewBox.style.setProperty(decl.property, newValue);
-                };
-
-                declContainer.append(propInput, valueWrapper, updateBtn);
-                controlsContainer.appendChild(declContainer);
-                previewBox.style.setProperty(decl.property, decl.value);
-            });
-
-            ruleWrapper.append(controlsContainer, previewBox);
-            editorContainer.appendChild(ruleWrapper);
-        };
-
-        // --- 3. Initialize UI ---
-        dropdown.addEventListener('change', (event) => renderEditor(event.target.value));
-        populateDropdown();
+        container.appendChild(editorWrapper);
     }
 }
 
-export const styleManager = new StyleManager();
+export const styleManager = new StyleManager('main-styles');

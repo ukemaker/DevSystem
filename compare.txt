@@ -1,33 +1,214 @@
-<h1>Data Management</h1>
+/**
+ * A manager for dynamically reading and updating CSS rules from a stylesheet.
+ */
+class StyleManager {
+    /**
+     * @param {string} stylesheetId The ID of the <link> or <style> element.
+     */
+    constructor(stylesheetId) {
+        const styleEl = document.getElementById(stylesheetId);
+        if (!styleEl) {
+            // This error will stop execution if the <link> tag is missing the ID.
+            throw new Error(`Stylesheet with id "${stylesheetId}" not found.`);
+        }
+        
+        // The .sheet property can be null if the stylesheet hasn't loaded or is cross-origin.
+        if (!styleEl.sheet) {
+            console.warn(`Stylesheet with id "${stylesheetId}" is not yet loaded or accessible. StyleManager may not work until it is.`);
+            this.sheet = null; 
+        } else {
+            this.sheet = styleEl.sheet;
+        }
+    }
 
-<div class="card">
-    <h2>Set Data Item</h2>
-    <div class="form-group">
-        <input list="module-list" id="module-input" placeholder="Select or type new Module">
-        <datalist id="module-list"></datalist>
-        <input list="key-list" id="key-input" placeholder="Select or type new Key">
-        <datalist id="key-list"></datalist>
-    </div>
-    <div class="form-group">
-        <input type="text" id="value-input" placeholder="Item Value">
-        <button id="set-item-btn">Set Item</button>
-        <button id="delete-item-btn" class="btn-danger">Delete Item</button>
-    </div>
-</div>
+    /**
+     * Normalizes a CSS color string to a 7-character hex string.
+     * @param {string} color - The CSS color string (e.g., 'red', '#f0f', 'var(--my-var)').
+     * @param {object} [variables] - An optional map of CSS variables to their values.
+     * @returns {string} A 7-character hex string (e.g., '#ff0000').
+     * @private
+     */
+    _normalizeColorToHex(color, variables = {}) {
+        let resolvedColor = color.trim();
+        // Resolve CSS variable if present
+        if (resolvedColor.startsWith('var(')) {
+            const varName = resolvedColor.substring(4, resolvedColor.length - 1);
+            if (variables[varName]) {
+                resolvedColor = variables[varName];
+            }
+        }
 
-<div class="card form-group">
-    <button id="fetch-btn">Refresh Data</button>
-    <button id="clear-btn">Clear All Data</button>
-</div>
+        // Use canvas to convert any valid color format to hex
+        try {
+            const ctx = document.createElement('canvas').getContext('2d');
+            ctx.fillStyle = resolvedColor;
+            return ctx.fillStyle;
+        } catch (e) {
+            // Return a default color if the format is invalid
+            return '#000000';
+        }
+    }
 
-<div class="card">
-    <h2>Import / Export</h2>
-    <div class="form-group">
-        <button id="export-btn">Export to JSON</button>
-        <input type="file" id="import-file-input" accept=".json" style="display: none;">
-        <button id="import-btn">Load from JSON</button>
-    </div>
-</div>
+    /**
+     * Sets or updates a CSS style for a given selector.
+     * @param {string} selector - The CSS selector (e.g., 'body', '.btn-primary').
+     * @param {string} property - The CSS property (e.g., 'color', 'background-color').
+     * @param {string} value - The new value for the property.
+     */
+    setStyle(selector, property, value) {
+        if (!this.sheet) return;
+        const rule = Array.from(this.sheet.cssRules).find(r => r.selectorText === selector);
+        if (rule) {
+            rule.style.setProperty(property, value);
+        }
+    }
 
-<h2>Current Data in Store:</h2>
-<div id="data-display-tree" class="tree-view-container"></div>
+    /**
+     * Retrieves all CSS variables defined in the :root scope.
+     * @returns {object} An object mapping variable names to their values.
+     */
+    getVariables() {
+        if (!this.sheet) return {};
+        const rootRule = Array.from(this.sheet.cssRules).find(rule => rule.selectorText === ':root');
+        if (!rootRule) return {};
+
+        const variables = {};
+        for (let i = 0; i < rootRule.style.length; i++) {
+            const propName = rootRule.style[i];
+            if (propName.startsWith('--')) {
+                variables[propName] = rootRule.style.getPropertyValue(propName).trim();
+            }
+        }
+        return variables;
+    }
+
+    /**
+     * Retrieves all style rules from the stylesheet.
+     * @returns {Array<CSSStyleRule>} An array of CSS style rules.
+     */
+    getStyles() {
+        if (!this.sheet) return [];
+        // Filter out non-style rules like @media or @keyframes
+        return Array.from(this.sheet.cssRules).filter(rule => rule instanceof CSSStyleRule);
+    }
+
+    /**
+     * Renders the Style Manager UI into a given container element.
+     * @param {HTMLElement} container - The container element to render the UI into.
+     */
+    renderUI(container) {
+        if (!this.sheet) {
+            container.innerHTML = `<p>Error: Stylesheet not accessible.</p>`;
+            return;
+        }
+        container.innerHTML = ''; // Clear previous UI
+
+        const cssRules = this.getStyles();
+        const cssVariables = this.getVariables();
+
+        // Create dropdown to select a rule
+        const dropdownGroup = document.createElement('div');
+        dropdownGroup.className = 'form-group';
+
+        const dropdownLabel = document.createElement('label');
+        dropdownLabel.textContent = 'Select a CSS Rule:';
+        dropdownLabel.htmlFor = 'style-rule-selector';
+
+        const dropdown = document.createElement('select');
+        dropdown.id = 'style-rule-selector';
+        dropdown.innerHTML = '<option value="">-- Please choose a rule --</option>';
+        cssRules.forEach(rule => {
+            const option = document.createElement('option');
+            option.value = rule.selectorText;
+            option.textContent = rule.selectorText;
+            dropdown.appendChild(option);
+        });
+        dropdownGroup.append(dropdownLabel, dropdown);
+
+        const editorContainer = document.createElement('div');
+
+        container.append(dropdownGroup, editorContainer);
+
+        // Event listener for the dropdown
+        dropdown.addEventListener('change', (event) => {
+            const selectedSelector = event.target.value;
+            this._renderEditorForSelector(selectedSelector, editorContainer, cssRules, cssVariables);
+        });
+    }
+
+    /**
+     * Renders the editor for a specific CSS rule.
+     * @param {string} selector - The selector of the rule to render.
+     * @param {HTMLElement} container - The container to render the editor into.
+     * @param {Array<CSSStyleRule>} cssRules - The list of all available rules.
+     * @param {object} cssVariables - The map of CSS variables.
+     * @private
+     */
+    _renderEditorForSelector(selector, container, cssRules, cssVariables) {
+        container.innerHTML = ''; // Clear previous editor
+        if (!selector) return;
+
+        const rule = cssRules.find(r => r.selectorText === selector);
+        if (!rule) return;
+
+        const editorWrapper = document.createElement('div');
+        editorWrapper.className = 'style-rule-editor';
+
+        const title = document.createElement('h3');
+        title.className = 'selector-title';
+        title.textContent = `Editing: ${selector}`;
+        editorWrapper.appendChild(title);
+
+        const declarations = Array.from(rule.style).map(prop => ({
+            property: prop,
+            value: rule.style.getPropertyValue(prop)
+        }));
+
+        declarations.forEach(decl => {
+            const declContainer = document.createElement('div');
+            declContainer.className = 'style-declaration';
+
+            const propLabel = document.createElement('label');
+            propLabel.textContent = decl.property;
+
+            const valueWrapper = document.createElement('div');
+            valueWrapper.className = 'value-wrapper';
+
+            const valueInput = document.createElement('input');
+            valueInput.type = 'text';
+            valueInput.value = decl.value;
+
+            valueInput.addEventListener('input', (e) => {
+                this.setStyle(selector, decl.property, e.target.value);
+            });
+
+            valueWrapper.appendChild(valueInput);
+
+            // Check if this property is a color
+            const isColorProperty = /color|background-color|border-color/.test(decl.property);
+            if (isColorProperty) {
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = this._normalizeColorToHex(decl.value, cssVariables);
+
+                colorInput.addEventListener('input', () => {
+                    valueInput.value = colorInput.value;
+                    this.setStyle(selector, decl.property, colorInput.value);
+                });
+
+                valueInput.addEventListener('input', () => {
+                    colorInput.value = this._normalizeColorToHex(valueInput.value, cssVariables);
+                });
+
+                valueWrapper.prepend(colorInput);
+            }
+
+            declContainer.append(propLabel, valueWrapper);
+            editorWrapper.appendChild(declContainer);
+        });
+
+        container.appendChild(editorWrapper);
+    }
+}
+
+export const styleManager = new StyleManager('main-styles');
