@@ -1,0 +1,11 @@
+{
+  "Bolt-Hole": {
+    "NumberOfHoles": "6",
+    "Input-Unit": "Inch",
+    "Output-Unit": "Inch"
+  },
+  "Arc-Milling": {
+    "Input-Unit": "Inch",
+    "Output-Unit": "Inch"
+  }
+}

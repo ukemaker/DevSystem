@@ -1,0 +1,194 @@
+/* --- 1. Design Tokens (CSS Variables) --- */
+:root {
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --primary-color: #007bff;
+    --primary-hover-color: #0056b3;
+    --border-color: #ddd;
+    --border-color-light: #eee;
+    --border-radius: 4px;
+    --background-body: #f9f9f9;
+    --background-content: #fff;
+    --background-card: #fafafa;
+    --background-code: #f4f4f4;
+}
+
+/* --- 2. Global Element Styles (The "No Tagging" System) --- */
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    background-color: var(--background-body);
+}
+
+input[type="text"],
+select {
+    font-size: 1rem;
+    padding: 8px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+button {
+    font-size: 1rem;
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--primary-color);
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    vertical-align: middle;
+}
+button:hover {
+    background-color: var(--primary-hover-color);
+    border-color: var(--primary-hover-color);
+}
+button.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+button.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* --- 3. App Structure & Layout --- */
+header {
+    background-color: var(--background-content);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 20px;
+}
+header h1 {
+    margin: 0;
+    padding: 0;
+    font-size: 1.5rem;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+main#content-area {
+    padding: 20px;
+    max-width: 1400px;
+    margin: auto;
+    background-color: var(--background-content);
+    border: 1px solid var(--border-color);
+    border-top: none;
+}
+main#content-area h1,
+main#content-area h2 {
+    border-bottom: 1px solid var(--border-color-light);
+    padding-bottom: 5px;
+    margin-top: 0;
+}
+
+/* --- 4. Reusable Components & Utilities --- */
+.card {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    background-color: var(--background-card);
+}
+.form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+.form-group input[type="text"] {
+    flex-grow: 1; /* Allow text inputs in a group to expand */
+}
+
+/* --- 5. Specific Component Styles (Keep these minimal) --- */
+.nav-button {
+    background: none;
+    border-color: transparent;
+    color: var(--primary-color);
+}
+.nav-button.active,
+.nav-button:hover {
+    background-color: #e7f3ff;
+    border-color: #cce3ff;
+}
+
+.tree-view-container {
+    font-family: monospace;
+    background-color: var(--background-code);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: var(--border-radius);
+}
+.tree-view-container ul {
+    list-style-type: none;
+    padding-left: 20px;
+    margin: 5px 0;
+}
+.tree-view-container li {
+    position: relative;
+}
+.tree-toggle {
+    cursor: pointer;
+    display: inline-block;
+    width: 1em;
+    user-select: none;
+}
+.tree-toggle::before {
+    content: '▶';
+    display: inline-block;
+    transition: transform 0.1s ease-in-out;
+}
+.tree-toggle.expanded::before {
+    transform: rotate(90deg);
+}
+.tree-key {
+    font-weight: bold;
+}
+.tree-value {
+    color: #0b7500; /* A nice green for values */
+}
+
+.style-rule-editor {
+    display: grid;
+    grid-template-columns: 1fr 5fr; /* Controls take 1/6, Preview takes 5/6 */
+    gap: 20px;
+    align-items: start;
+}
+.selector-title {
+    margin: 0 0 10px 0;
+    font-family: monospace;
+    background-color: var(--border-color-light);
+    padding: 5px 8px;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+}
+.editor-preview {
+    font-size: 2em; /* Match the default h1 size */
+    font-weight: bold; /* Match the default h1 weight */
+    padding: 20px;
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--background-content);
+    text-align: center;
+    min-height: 50px;
+    word-break: break-word;
+}
+.style-declaration {
+    display: grid;
+    grid-template-columns: 1.5fr 2fr auto; /* Prop, Value(s), Button */
+    gap: 10px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+.value-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.value-wrapper input[type="text"] {
+    width: 100%;
+    box-sizing: border-box; /* Ensure padding doesn't cause overflow */
+}
+input[type="color"] {
+    min-width: 40px;
+    height: 40px;
+    padding: 2px; /* Tighter padding for color swatch */
+}

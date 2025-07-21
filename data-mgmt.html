@@ -1,0 +1,33 @@
+<h1>Data Management</h1>
+
+<div class="card">
+    <h2>Set Data Item</h2>
+    <div class="form-group">
+        <input list="module-list" id="module-input" placeholder="Select or type new Module">
+        <datalist id="module-list"></datalist>
+        <input list="key-list" id="key-input" placeholder="Select or type new Key">
+        <datalist id="key-list"></datalist>
+    </div>
+    <div class="form-group">
+        <input type="text" id="value-input" placeholder="Item Value">
+        <button id="set-item-btn">Set Item</button>
+        <button id="delete-item-btn" class="btn-danger">Delete Item</button>
+    </div>
+</div>
+
+<div class="card form-group">
+    <button id="fetch-btn">Refresh Data</button>
+    <button id="clear-btn">Clear All Data</button>
+</div>
+
+<div class="card">
+    <h2>Import / Export</h2>
+    <div class="form-group">
+        <button id="export-btn">Export to JSON</button>
+        <input type="file" id="import-file-input" accept=".json" style="display: none;">
+        <button id="import-btn">Load from JSON</button>
+    </div>
+</div>
+
+<h2>Current Data in Store:</h2>
+<div id="data-display-tree" class="tree-view-container"></div>
