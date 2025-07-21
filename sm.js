@@ -59,15 +59,26 @@ class StyleManager {
             // Iterate through the rules of the found stylesheet
             for (const rule of styleSheet.cssRules) {
                 if (rule instanceof CSSStyleRule) {
+                    const selectorText = rule.selectorText;
+                    // We parse the raw cssText to get the original, un-computed values (like 'var(--my-var)')
+                    // and to get shorthand properties as they were written.
+                    const declarationsBlock = rule.cssText.substring(rule.cssText.indexOf('{') + 1, rule.cssText.lastIndexOf('}')).trim();
                     const declarations = [];
-                    // Iterate through the style declarations of the rule
-                    for (let i = 0; i < rule.style.length; i++) {
-                        const property = rule.style[i];
-                        const value = rule.style.getPropertyValue(property);
-                        declarations.push({ property, value });
+
+                    if (declarationsBlock) {
+                        declarationsBlock.split(';').forEach(declStr => {
+                            if (declStr.trim()) {
+                                const [property, ...valueParts] = declStr.split(':');
+                                const value = valueParts.join(':').trim();
+                                if (property && value) {
+                                    declarations.push({ property: property.trim(), value });
+                                }
+                            }
+                        });
                     }
+                    
                     if (declarations.length > 0) {
-                        allRules.push({ selectorText: rule.selectorText, declarations });
+                        allRules.push({ selectorText, declarations });
                     }
                 }
             }
@@ -127,7 +138,12 @@ class StyleManager {
             rules.forEach((rule, index) => {
                 const option = document.createElement('option');
                 option.value = index;
-                option.textContent = rule.selectorText;
+                // Make the :root selector more user-friendly in the UI
+                if (rule.selectorText === ':root') {
+                    option.textContent = 'CSS Variables (:root)';
+                } else {
+                    option.textContent = rule.selectorText;
+                }
                 dropdown.appendChild(option);
             });
         };
@@ -169,7 +185,27 @@ class StyleManager {
                 valueInput.value = decl.value;
                 valueWrapper.appendChild(valueInput);
 
-                const isColorProperty = /(^color$|color$|^background$|^border(-top|-right|-bottom|-left)?$)/i.test(decl.property);
+                // If the value is a CSS variable, show its resolved value.
+                const valueStr = decl.value.trim();
+                if (valueStr.startsWith('var(')) {
+                    const varName = valueStr.substring(4, valueStr.length - 1);
+                    if (cssVariables[varName]) {
+                        const resolvedValueSpan = document.createElement('span');
+                        resolvedValueSpan.className = 'resolved-value';
+                        resolvedValueSpan.textContent = `(${cssVariables[varName]})`;
+                        valueWrapper.appendChild(resolvedValueSpan);
+                    }
+                }
+
+                // Only show a color picker for properties that are explicitly for colors.
+                let isColorProperty = false;
+                if (decl.property.startsWith('--')) {
+                    // For CSS variables, be more lenient. Check for 'color' or 'background'.
+                    isColorProperty = /color|background/i.test(decl.property);
+                } else {
+                    // For standard properties, be very specific.
+                    isColorProperty = /(^color|(-color)$)/i.test(decl.property);
+                }
                 if (isColorProperty) {
                     const colorInput = document.createElement('input');
                     colorInput.type = 'color';

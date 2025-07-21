@@ -148,7 +148,7 @@ main#content-area h2 {
 
 .style-rule-editor {
     display: grid;
-    grid-template-columns: 1fr 5fr; /* Controls take 1/6, Preview takes 5/6 */
+    grid-template-columns: 3fr 2fr; /* Controls take 3/5 (60%), Preview takes 2/5 (40%) */
     gap: 20px;
     align-items: start;
 }
@@ -173,19 +173,25 @@ main#content-area h2 {
 }
 .style-declaration {
     display: grid;
-    grid-template-columns: 1.5fr 2fr auto; /* Prop, Value(s), Button */
+    grid-template-columns: 1.5fr 2.5fr auto; /* Prop, Value(s), Button */
     gap: 10px;
     margin-bottom: 8px;
     align-items: center;
+}
+.style-declaration input[type="text"] {
+    width: 100%;
+    box-sizing: border-box; /* Ensure padding doesn't cause overflow */
 }
 .value-wrapper {
     display: flex;
     align-items: center;
     gap: 5px;
 }
-.value-wrapper input[type="text"] {
-    width: 100%;
-    box-sizing: border-box; /* Ensure padding doesn't cause overflow */
+.value-wrapper .resolved-value {
+    color: #555;
+    font-style: italic;
+    margin-left: 8px;
+    white-space: nowrap;
 }
 input[type="color"] {
     min-width: 40px;
