@@ -1,11 +1,24 @@
 {
+  "_schema": {
+    "labels": {
+      "module": "Module",
+      "key": "Key",
+      "value": "Item"
+    }
+  },
   "Bolt-Hole": {
     "NumberOfHoles": "6",
     "Input-Unit": "Inch",
     "Output-Unit": "Inch"
   },
   "Arc-Milling": {
+    "NumberOfSteps": "20",
     "Input-Unit": "Inch",
     "Output-Unit": "Inch"
+  },
+  "LineHole": {
+    "Input-Unit": "Inch",
+    "Output-Unit": "Inch",
+    "NumberOfHoles": "3"
   }
 }

@@ -56,12 +56,27 @@ function setupDataManagementView() {
     // --- Handlers ---
     async function refreshDisplay() {
         try {
-            allData = await dataManager.getAllItems();
+            const store = await dataManager.getAllItems();
+            
+            // Separate schema from data for processing
+            const schema = store._schema || {};
+            allData = { ...store }; // allData is used by other functions
+            delete allData._schema;
+
+            // Update UI labels from schema, with sensible defaults
+            const labels = schema.labels || {};
+            const moduleLabel = labels.module || 'Module';
+            const keyLabel = labels.key || 'Key';
+            const valueLabel = labels.value || 'Item';
+
+            moduleInput.placeholder = `Select or type new ${moduleLabel}`;
+            keyInput.placeholder = `Select or type new ${keyLabel}`;
+            valueInput.placeholder = `${valueLabel} Value`;
             
             // Render the new tree view
-            renderTreeView(allData);
+            renderTreeView(allData, labels);
 
-            // Update the datalists
+            // Update the datalists with the actual data
             populateModuleDatalist();
             populateKeyDatalist();
 
@@ -71,40 +86,43 @@ function setupDataManagementView() {
         }
     }
 
-    function renderTreeView(data) {
+    function renderTreeView(data, labels) {
         dataDisplayTree.innerHTML = ''; // Clear previous tree
         if (Object.keys(data).length === 0) {
             dataDisplayTree.textContent = '[No data in store]';
             return;
         }
         const rootUl = document.createElement('ul');
-        buildTree(data, rootUl);
+        buildTree(data, rootUl, labels);
         dataDisplayTree.appendChild(rootUl);
     }
 
-    function buildTree(obj, parentElement) {
-        for (const key in obj) {
-            const li = document.createElement('li');
-            const keySpan = document.createElement('span');
-            keySpan.className = 'tree-key';
-            keySpan.textContent = `${key}: `;
+    function buildTree(data, parentElement, labels) {
+        // Level 0: Iterate through Modules
+        for (const moduleName in data) {
+            const moduleObject = data[moduleName];
+            const moduleLi = document.createElement('li');
 
-            if (typeof obj[key] === 'object' && obj[key] !== null) {
-                const toggle = document.createElement('span');
-                toggle.className = 'tree-toggle';
-                li.appendChild(toggle);
-                li.appendChild(keySpan);
-                const ul = document.createElement('ul');
-                ul.style.display = 'none'; // Start collapsed
-                buildTree(obj[key], ul);
-                li.appendChild(ul);
-            } else {
-                const valueSpan = document.createElement('span');
-                valueSpan.className = 'tree-value';
-                valueSpan.textContent = `"${obj[key]}"`;
-                li.append(keySpan, valueSpan);
+            const toggle = document.createElement('span');
+            toggle.className = 'tree-toggle expanded'; // Start expanded
+            moduleLi.appendChild(toggle);
+
+            // Use the label from the schema for "Module"
+            const moduleLabel = labels.module || 'Module';
+            moduleLi.innerHTML += `<span class="tree-key">${moduleLabel}: </span><span class="tree-value">"${moduleName}"</span>`;
+            
+            const keyUl = document.createElement('ul');
+            // Level 1: Iterate through Keys and Items
+            for (const keyName in moduleObject) {
+                const itemValue = moduleObject[keyName];
+                const keyLi = document.createElement('li');
+                const keyLabel = labels.key || 'Key';
+                keyLi.innerHTML = `<span class="tree-key">${keyLabel}: ${keyName}</span>: <span class="tree-value">"${itemValue}"</span>`;
+                keyUl.appendChild(keyLi);
             }
-            parentElement.appendChild(li);
+
+            moduleLi.appendChild(keyUl);
+            parentElement.appendChild(moduleLi);
         }
     }
 
@@ -190,6 +208,24 @@ function setupDataManagementView() {
         }
     }
 
+    async function handleExport() {
+        try {
+            const { blob, filename } = await dataManager.getExportableJson();
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to export data:', error);
+            alert('Error exporting data.');
+        }
+    }
+
     async function handleLoadFromJson() {
         const file = importFileInput.files[0];
         if (!file) return;
@@ -209,8 +245,9 @@ function setupDataManagementView() {
     deleteItemButton.addEventListener('click', handleDeleteItem);
     dataDisplayTree.addEventListener('click', (event) => {
         if (event.target.classList.contains('tree-toggle')) {
-            const sublist = event.target.nextElementSibling.nextElementSibling;
-            if (sublist && sublist.tagName === 'UL') {
+            const parentLi = event.target.parentElement;
+            const sublist = parentLi.querySelector('ul'); // Find the UL inside the LI
+            if (sublist) {
                 event.target.classList.toggle('expanded');
                 sublist.style.display = sublist.style.display === 'none' ? 'block' : 'none';
             }
@@ -220,7 +257,7 @@ function setupDataManagementView() {
     moduleInput.addEventListener('input', populateKeyDatalist);
     keyInput.addEventListener('input', populateValueInput);
     clearButton.addEventListener('click', handleClearAll);
-    exportButton.addEventListener('click', dataManager.exportDataAsJson);
+    exportButton.addEventListener('click', handleExport);
     importButton.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', handleLoadFromJson);
 
@@ -237,3 +274,6 @@ function setupStyleManagementView() {
 // --- App Initialization ---
 navDataMgmt.addEventListener('click', () => loadView('data-mgmt'));
 navStyleMgmt.addEventListener('click', () => loadView('style-mgmt'));
+
+// Load the default view when the application starts
+loadView('data-mgmt');

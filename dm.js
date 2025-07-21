@@ -104,21 +104,39 @@ export const dataManager = {
     clearAllItems: async () => saveStore({}),
 
     /**
-     * Triggers a browser download of the entire data store as a JSON file.
+     * Prepares the entire data store for export as a JSON file.
+     * This function is UI-agnostic and returns the data as a Blob.
+     * @returns {Promise<{blob: Blob, filename: string}>} A promise that resolves with the blob and a suggested filename.
      */
-    exportDataAsJson: async () => {
-        const data = getStore();
-        const jsonString = JSON.stringify(data, null, 2);
+    getExportableJson: async () => {
+        const store = getStore();
+
+        // Separate schema from the rest of the data to control export order.
+        const { _schema, ...data } = store;
+
+        // Define or ensure the default schema exists.
+        const finalSchema = _schema || {};
+        if (!finalSchema.labels) {
+            finalSchema.labels = {
+                module: "Module",
+                key: "Key",
+                value: "Item"
+            };
+        }
+
+        // Reconstruct the object for export with the schema first for readability.
+        const dataToExport = {
+            _schema: finalSchema,
+            ...data
+        };
+
+        const jsonString = JSON.stringify(dataToExport, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'datastore.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        return {
+            blob,
+            filename: 'datastore.json'
+        };
     },
 
     /**
