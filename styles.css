@@ -1,211 +1,239 @@
-/* --- 1. Design Tokens (CSS Variables) --- */
+/* --- 1. CSS Variables --- */
 :root {
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    --background-body: #f0f2f5;
+    --background-content: #ffffff;
+    --text-color: #333333;
     --primary-color: #007bff;
-    --primary-hover-color: #0056b3;
-    --border-color: #ddd;
-    --border-color-light: #eee;
-    --border-radius: 4px;
-    --background-body: #f9f9f9;
-    --background-content: #fff;
-    --background-card: #fafafa;
-    --background-code: #f4f4f4;
+    --border-color: #dee2e6;
+    --border-color-light: #e9ecef;
+    --danger-color: #dc3545;
+    --danger-color-hover: #c82333;
 }
 
-/* --- 2. Global Element Styles (The "No Tagging" System) --- */
+/* --- 2. General Styles --- */
 body {
+    color: var(--text-color);
     font-family: var(--font-family);
     margin: 0;
     background-color: var(--background-body);
+    display: flex;
+    height: 100vh;
+    overflow: hidden; /* Prevent body scrollbars when sidebar is present */
 }
 
 input[type="text"],
+input[type="file"],
 select {
-    font-size: 1rem;
-    padding: 8px;
-    border-radius: var(--border-radius);
+    width: 100%;
+    padding: 8px 12px;
     border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
 }
 
 button {
-    font-size: 1rem;
-    padding: 8px 12px;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--primary-color);
-    background-color: var(--primary-color);
-    color: white;
+    padding: 8px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: #f8f9fa;
     cursor: pointer;
-    vertical-align: middle;
+    font-size: 1rem;
 }
 button:hover {
-    background-color: var(--primary-hover-color);
-    border-color: var(--primary-hover-color);
+    background-color: #e9ecef;
 }
 button.btn-danger {
-    background-color: #dc3545;
-    border-color: #dc3545;
+    background-color: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
 }
 button.btn-danger:hover {
-    background-color: #c82333;
-    border-color: #bd2130;
+    background-color: var(--danger-color-hover);
+    border-color: var(--danger-color-hover);
 }
+
 
 /* --- 3. App Structure & Layout --- */
 header {
     background-color: var(--background-content);
-    border-bottom: 1px solid var(--border-color);
-    padding: 10px 20px;
+    border-right: 1px solid var(--border-color);
+    padding: 20px 0;
+    width: 250px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
 }
 header h1 {
-    margin: 0;
+    margin: 0 20px 20px 20px;
     padding: 0;
     font-size: 1.5rem;
-    display: inline-block;
-    vertical-align: middle;
+    display: block;
+    border-bottom: 1px solid var(--border-color-light);
+    padding-bottom: 15px;
 }
 
 main#content-area {
     padding: 20px;
-    max-width: 1400px;
-    margin: auto;
-    background-color: var(--background-content);
-    border: 1px solid var(--border-color);
-    border-top: none;
+    flex-grow: 1;
+    overflow-y: auto; /* Allow content to scroll, not the whole page */
 }
 main#content-area h1,
 main#content-area h2 {
     border-bottom: 1px solid var(--border-color-light);
-    padding-bottom: 5px;
+    padding-bottom: 10px;
     margin-top: 0;
 }
 
-/* --- 4. Reusable Components & Utilities --- */
-.card {
-    margin-top: 20px;
-    padding: 15px;
-    border: 1px solid var(--border-color-light);
-    border-radius: var(--border-radius);
-    background-color: var(--background-card);
-}
-.form-group {
-    margin-bottom: 15px;
+/* --- 4. Navigation --- */
+nav#sidebar-nav {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-}
-.form-group input[type="text"] {
-    flex-grow: 1; /* Allow text inputs in a group to expand */
-}
-
-/* --- 5. Specific Component Styles (Keep these minimal) --- */
-#data-status-indicator {
-    margin-top: 10px;
-    font-style: italic;
-}
-#data-status-indicator.dirty {
-    color: #ff8c00; /* A noticeable orange */
-    font-weight: bold;
-}
-#data-status-indicator.synced {
-    color: #0b7500; /* The same green as tree values */
+    flex-direction: column;
 }
 .nav-button {
     background: none;
-    border-color: transparent;
+    border: none;
     color: var(--primary-color);
+    padding: 15px 20px;
+    text-align: left;
+    width: 100%;
+    border-radius: 0;
 }
 .nav-button.active,
 .nav-button:hover {
     background-color: #e7f3ff;
-    border-color: #cce3ff;
+    color: #0056b3;
+    font-weight: bold;
 }
 
+/* --- 4a. Sub-Navigation --- */
+.nav-group .nav-button {
+    position: relative;
+}
+.nav-group .nav-button::after {
+    content: '▶';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%) rotate(0deg);
+    transition: transform 0.2s ease-in-out;
+    font-size: 0.8em;
+}
+.nav-group.expanded .nav-button::after {
+    transform: translateY(-50%) rotate(90deg);
+}
+.submenu {
+    display: none;
+    background-color: #f8f9fa;
+}
+.nav-group.expanded .submenu {
+    display: block;
+}
+.submenu-item {
+    padding-left: 40px !important;
+}
+
+
+/* --- 5. Components --- */
+.card {
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+.form-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+/* --- 6. Data Management Specific --- */
+#data-status-indicator {
+    font-style: italic;
+    margin-top: 10px;
+}
+#data-status-indicator.dirty {
+    color: #d9534f;
+}
+#data-status-indicator.synced {
+    color: #0b7500;
+}
 .tree-view-container {
-    font-family: monospace;
-    background-color: var(--background-code);
+    background-color: #f8f9fa;
     border: 1px solid var(--border-color);
     padding: 15px;
-    border-radius: var(--border-radius);
+    border-radius: 4px;
+    font-family: "Courier New", Courier, monospace;
+    max-height: 400px;
+    overflow-y: auto;
 }
 .tree-view-container ul {
     list-style-type: none;
     padding-left: 20px;
-    margin: 5px 0;
 }
 .tree-view-container li {
     position: relative;
 }
 .tree-toggle {
     cursor: pointer;
-    display: inline-block;
-    width: 1em;
-    user-select: none;
+    position: absolute;
+    left: -15px;
+    top: 2px;
 }
 .tree-toggle::before {
-    content: '▶';
+    content: '▼';
     display: inline-block;
+    font-size: 0.8em;
     transition: transform 0.1s ease-in-out;
 }
-.tree-toggle.expanded::before {
-    transform: rotate(90deg);
+.tree-toggle:not(.expanded)::before {
+    transform: rotate(-90deg);
 }
 .tree-key {
     font-weight: bold;
+    color: #c50078; /* A magenta-like color for keys */
 }
 .tree-value {
-    color: #0b7500; /* A nice green for values */
+    color: #0b7500; /* A dark green for values */
 }
 
+/* --- 7. Style Management Specific --- */
 .style-rule-editor {
-    display: grid;
-    grid-template-columns: 3fr 2fr; /* Controls take 3/5 (60%), Preview takes 2/5 (40%) */
-    gap: 20px;
-    align-items: start;
+    border: 1px solid var(--border-color-light);
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 4px;
 }
 .selector-title {
-    margin: 0 0 10px 0;
-    font-family: monospace;
-    background-color: var(--border-color-light);
-    padding: 5px 8px;
-    border-radius: var(--border-radius);
-    font-size: 1.1rem;
-}
-.editor-preview {
-    font-size: 2em; /* Match the default h1 size */
-    font-weight: bold; /* Match the default h1 weight */
-    padding: 20px;
-    border: 1px dashed var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--background-content);
-    text-align: center;
-    min-height: 50px;
-    word-break: break-word;
+    font-family: "Courier New", Courier, monospace;
+    background-color: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 3px;
+    margin-bottom: 15px;
 }
 .style-declaration {
     display: grid;
-    grid-template-columns: 1.5fr 2.5fr auto; /* Prop, Value(s), Button */
+    grid-template-columns: 1fr 2fr auto;
     gap: 10px;
-    margin-bottom: 8px;
     align-items: center;
-}
-.style-declaration input[type="text"] {
-    width: 100%;
-    box-sizing: border-box; /* Ensure padding doesn't cause overflow */
+    margin-bottom: 10px;
 }
 .value-wrapper {
     display: flex;
     align-items: center;
     gap: 5px;
 }
-.value-wrapper .resolved-value {
-    color: #555;
+.resolved-value {
     font-style: italic;
-    margin-left: 8px;
-    white-space: nowrap;
+    color: #6c757d;
+    font-size: 0.9em;
 }
-input[type="color"] {
-    min-width: 40px;
-    height: 40px;
-    padding: 2px; /* Tighter padding for color swatch */
+.editor-preview {
+    border: 1px dashed var(--border-color);
+    padding: 20px;
+    text-align: center;
+    margin-top: 20px;
 }

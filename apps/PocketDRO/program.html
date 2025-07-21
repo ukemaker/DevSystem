@@ -1,0 +1,48 @@
+<h1>Program Settings</h1>
+
+<div class="card">
+    <h2>Data Management</h2>
+    <p>Manage the application's internal data store. This data is shared across all modules.</p>
+
+    <div class="card">
+        <h3>Set Data Item</h3>
+        <div class="form-group">
+            <input list="module-list" id="module-input" placeholder="Select or type new Module">
+            <datalist id="module-list"></datalist>
+            <input list="key-list" id="key-input" placeholder="Select or type new Key">
+            <datalist id="key-list"></datalist>
+        </div>
+        <div class="form-group">
+            <input type="text" id="value-input" placeholder="Item Value">
+            <button id="set-item-btn">Set Item</button>
+            <button id="delete-item-btn" class="btn-danger">Delete Item</button>
+        </div>
+    </div>
+
+    <div class="card form-group">
+        <button id="fetch-btn">Refresh Data</button>
+        <button id="clear-btn" class="btn-danger">Clear All Data</button>
+    </div>
+
+    <div class="card">
+        <h3>Import / Export</h3>
+        <div class="form-group">
+            <button id="export-btn">Export to JSON</button>
+            <input type="file" id="import-file-input" accept=".json" style="display: none;">
+            <button id="import-btn">Load from JSON</button>
+        </div>
+        <p id="data-status-indicator"></p>
+    </div>
+
+    <h3>Current Data in Store:</h3>
+    <div id="data-display-tree" class="tree-view-container"></div>
+</div>
+
+<div class="card">
+    <h2>Style Management</h2>
+    <p>Select a style rule from the dropdown to edit its properties. Changes are applied live.</p>
+    <div id="style-manager-container">
+        <!-- The Style Manager UI will be rendered here by sm.js -->
+    </div>
+</div>
+
