@@ -1,5 +1,5 @@
-import { dataManager } from './dm.js';
-import { styleManager } from './sm.js';
+import { dataManager } from '../../shared/dm.js';
+import { styleManager } from '../../shared/sm.js';
 
 // --- Main App Setup ---
 const contentArea = document.getElementById('content-area');
@@ -50,9 +50,22 @@ function setupDataManagementView() {
     const exportButton = document.getElementById('export-btn');
     const importButton = document.getElementById('import-btn');
     const importFileInput = document.getElementById('import-file-input');
+    const dataStatusIndicator = document.getElementById('data-status-indicator');
 
     let allData = {}; // Cache the data store for efficiency
+    let isDataDirty = false; // Track if changes have been made since last save/load
 
+    // --- UI Update Functions ---
+    function updateStatusIndicator() {
+        if (isDataDirty) {
+            dataStatusIndicator.textContent = 'Local storage has unsaved changes.';
+            dataStatusIndicator.className = 'dirty';
+        } else {
+            dataStatusIndicator.textContent = 'Local storage is in sync.';
+            dataStatusIndicator.className = 'synced';
+        }
+    }
+    
     // --- Handlers ---
     async function refreshDisplay() {
         try {
@@ -165,6 +178,8 @@ function setupDataManagementView() {
         }
         try {
             await dataManager.setItem(module, key, value);
+            isDataDirty = true;
+            updateStatusIndicator();
             await refreshDisplay();
         } catch (error)
         {
@@ -185,6 +200,8 @@ function setupDataManagementView() {
         if (confirm(`Are you sure you want to delete the key "${key}" from module "${module}"?`)) {
             try {
                 await dataManager.deleteItem(module, key);
+                isDataDirty = true;
+                updateStatusIndicator();
                 // Clear inputs after successful deletion
                 keyInput.value = '';
                 valueInput.value = '';
@@ -200,6 +217,8 @@ function setupDataManagementView() {
         if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
             try {
                 await dataManager.clearAllItems();
+                isDataDirty = true;
+                updateStatusIndicator();
                 await refreshDisplay();
             } catch (error) {
                 console.error('Failed to clear items:', error);
@@ -220,6 +239,8 @@ function setupDataManagementView() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+            isDataDirty = false;
+            updateStatusIndicator();
         } catch (error) {
             console.error('Failed to export data:', error);
             alert('Error exporting data.');
@@ -231,6 +252,8 @@ function setupDataManagementView() {
         if (!file) return;
         try {
             await dataManager.loadDataFromJson(file);
+            isDataDirty = false;
+            updateStatusIndicator();
             await refreshDisplay();
             alert('Data loaded successfully!');
         } catch (error) {
@@ -262,6 +285,7 @@ function setupDataManagementView() {
     importFileInput.addEventListener('change', handleLoadFromJson);
 
     // Initial data load for this view
+    updateStatusIndicator();
     refreshDisplay();
 }
 

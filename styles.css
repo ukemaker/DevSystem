@@ -99,6 +99,17 @@ main#content-area h2 {
 }
 
 /* --- 5. Specific Component Styles (Keep these minimal) --- */
+#data-status-indicator {
+    margin-top: 10px;
+    font-style: italic;
+}
+#data-status-indicator.dirty {
+    color: #ff8c00; /* A noticeable orange */
+    font-weight: bold;
+}
+#data-status-indicator.synced {
+    color: #0b7500; /* The same green as tree values */
+}
 .nav-button {
     background: none;
     border-color: transparent;

@@ -16,7 +16,15 @@
     "Input-Unit": "Inch",
     "Output-Unit": "Inch"
   },
-  "LineHole": {
+  "Calc-Conv": {
+    "Input-Unit": "Inch",
+    "Output-Unit": "Inch",
+    "Convert From": "Inch",
+    "Convert To": "Inch",
+    "Divide By": "2",
+    "Multiply By": "2"
+  },
+  "Line-Hole": {
     "Input-Unit": "Inch",
     "Output-Unit": "Inch",
     "NumberOfHoles": "3"
