@@ -20,6 +20,7 @@ body {
 }
 
 input[type="text"],
+input[type="email"],
 input[type="file"],
 select,
 input[type="color"] {
@@ -29,6 +30,12 @@ input[type="color"] {
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 1rem;
+}
+
+/* Style for disabled inputs to make them visually distinct */
+input:disabled {
+    background-color: var(--border-color-light); /* A light grey to indicate non-editable state */
+    color: #6c757d; /* Muted text color */
 }
 
 input[type="color"] {
@@ -179,12 +186,44 @@ nav#sidebar-nav {
     border-radius: 5px;
     padding: 20px;
     margin-bottom: 20px;
+    max-width: 50%;
+    min-width: 500px; /* Prevent form from becoming too narrow */
 }
 .form-group {
     display: flex;
     gap: 10px;
     margin-bottom: 15px;
     align-items: center;
+}
+
+/* --- 5a. Form-specific Components --- */
+.user-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px; /* Reduced spacing */
+    margin-bottom: 20px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-field.full-width {
+    grid-column: 1 / -1; /* Span across all columns */
+}
+
+.form-field label {
+    margin-bottom: 4px; /* Tighter spacing */
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #555;
+}
+
+@media (max-width: 768px) {
+    .user-info-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* --- 6. Data Management Specific --- */

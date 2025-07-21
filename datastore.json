@@ -28,5 +28,15 @@
     "Input-Unit": "Inch",
     "Output-Unit": "Inch",
     "NumberOfHoles": "3"
+  },
+  "system": {
+    "name": "Michael DaSilva",
+    "email": "ukemkr@gmail.com",
+    "company": "DaSilva Ukulele Co.",
+    "title": "Engineer",
+    "street": "2547 8th St. STE 28",
+    "city": "BERKELEY",
+    "state": "CA",
+    "phone": "5108598532"
   }
 }

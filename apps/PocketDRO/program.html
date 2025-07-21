@@ -27,9 +27,10 @@
     <div class="card">
         <h3>Import / Export</h3>
         <div class="form-group">
-            <button id="export-btn">Export to JSON</button>
+            <button id="export-btn">Export to File</button>
             <input type="file" id="import-file-input" accept=".json" style="display: none;">
-            <button id="import-btn">Load from JSON</button>
+            <button id="import-btn">Import from File</button>
+            <button type="button" id="backup-btn" class="btn-danger" style="display: none;">Backup Changes</button>
         </div>
         <p id="data-status-indicator"></p>
     </div>
@@ -45,4 +46,3 @@
         <!-- The Style Manager UI will be rendered here by sm.js -->
     </div>
 </div>
-
