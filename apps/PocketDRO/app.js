@@ -141,17 +141,38 @@ function setupSystemView() {
         saveBtn: document.getElementById('save-user-info-btn'),
         cancelBtn: document.getElementById('cancel-edit-btn'),
         status: document.getElementById('user-info-status'),
+
+        // Project section elements
+        projectSelector: document.getElementById('project-selector'),
+        projectDetailsForm: document.getElementById('project-details-form'),
+        projectStatus: document.getElementById('project-status'), // now a select
+        projectStartDate: document.getElementById('project-start-date'), // now an input
+        projectEndDate: document.getElementById('project-end-date'), // now an input
+        projectInputs: document.querySelectorAll('#project-details-form input, #project-details-form select'),
+        editProjectBtn: document.getElementById('edit-project-btn'),
+        saveProjectBtn: document.getElementById('save-project-btn'),
+        cancelProjectBtn: document.getElementById('cancel-project-btn'),
+        addProjectBtn: document.getElementById('add-project-btn'),
+
+        // Modal elements are global but managed here
+        addProjectModal: document.getElementById('add-project-modal'),
+        addProjectForm: document.getElementById('add-project-form'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+        modalCancelBtn: document.getElementById('modal-cancel-btn'),
     };
 
     const moduleName = 'system';
     let originalData = {}; // To store the initial state for dirty checking
+    let allProjects = {};
+    let activeProjectName = null;
+    let originalProjectData = {}; // For canceling project edits
 
     function showStatus(message, isError = false, duration = 3000) {
         if (!dom.status) return;
         dom.status.textContent = message;
+        dom.status.classList.remove('hidden');
         dom.status.style.color = isError ? 'var(--danger-color)' : 'green';
-        dom.status.style.display = 'block';
-        setTimeout(() => { dom.status.style.display = 'none'; }, duration);
+        setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
     }
 
     // Gets current data from the form fields
@@ -174,9 +195,11 @@ function setupSystemView() {
     // Toggles the UI between viewing and editing states
     function setEditMode(isEditing) {
         dom.inputs.forEach(input => (input.disabled = !isEditing));
-        dom.editBtn.style.display = isEditing ? 'none' : 'block';
-        dom.saveBtn.style.display = isEditing ? 'block' : 'none';
-        dom.cancelBtn.style.display = isEditing ? 'block' : 'none';
+        // Hide the "Edit" button when in edit mode
+        dom.editBtn.classList.toggle('hidden', isEditing);
+        // Instead of hiding, we will enable/disable the Save/Cancel buttons
+        dom.saveBtn.disabled = !isEditing;
+        dom.cancelBtn.disabled = !isEditing;
 
         if (isEditing && dom.inputs.length > 0) {
             dom.inputs[0].focus(); // Focus the first input field for better UX
@@ -189,7 +212,6 @@ function setupSystemView() {
             // Create a promise for each field to be loaded from the data store
             const loadPromises = Array.from(dom.inputs).map(async (input) => {
                 const key = input.id.replace('user-', '');
-                // Await each item individually
                 const value = await dataManager.getItem(moduleName, key) || '';
                 input.value = value;
                 originalData[key] = value; // Store the pristine value
@@ -206,13 +228,13 @@ function setupSystemView() {
         const currentData = getFormData();
         try {
             // Create a promise for each field to be saved
-            const savePromises = Object.entries(currentData).map(([key, value]) => {
-                return dataManager.setItem(moduleName, key, value.trim());
+            const savePromises = Object.entries(currentData).map(([key, formValue]) => {
+                return dataManager.setItem(moduleName, key, formValue.trim());
             });
             await Promise.all(savePromises); // Wait for all fields to be saved
 
             originalData = { ...currentData }; // Update the original data to the new saved state
-            showStatus('User information saved successfully!');
+            showStatus('User data saved successfully!');
 
             // Set the global dirty flag and update UI
             globalState.isDirty = true;
@@ -234,6 +256,257 @@ function setupSystemView() {
         setEditMode(false);
     }
 
+    /**
+     * Converts the flat `allProjects` object into the nested structure required for saving in datastore.json.
+     * @param {Object} projectsObject - The flat `allProjects` object.
+     * @returns {Object} A structured object where keys are project names.
+     */
+    function structureProjectsForSaving(projectsObject) {
+        const structured = {};
+        for (const project of Object.values(projectsObject)) {
+            const projectName = project.name;
+            // Create a copy of the project details, excluding the name itself.
+            const projectDetails = { ...project };
+            delete projectDetails.name;
+            // The datastore structure uses an array for each project's details.
+            structured[projectName] = [projectDetails];
+        }
+        return structured;
+    }
+
+    function setProjectEditMode(isEditing) {
+        if (!dom.projectInputs) return;
+        dom.projectInputs.forEach(input => input.disabled = !isEditing);
+        dom.editProjectBtn.classList.toggle('hidden', isEditing);
+        dom.saveProjectBtn.disabled = !isEditing;
+        dom.cancelProjectBtn.disabled = !isEditing;
+        // Disable project selector and add button while editing
+        dom.projectSelector.disabled = isEditing;
+        dom.addProjectBtn.disabled = isEditing;
+
+        if (isEditing) {
+            dom.projectStatus.focus();
+        }
+    }
+
+    function updateProjectDetails(projectName) {
+        if (!dom.projectDetailsForm) return;
+        setProjectEditMode(false); // Always reset edit mode on change
+
+        if (!projectName) {
+            dom.projectDetailsForm.classList.add('hidden');
+            return;
+        }
+
+        const project = allProjects[projectName];
+        if (project) {
+            dom.projectStatus.value = project.status || 'Not Started';
+            dom.projectStartDate.value = project.startDate || '';
+            dom.projectEndDate.value = project.endDate || '';
+
+            // Store for cancellation
+            originalProjectData = { ...project };
+
+            dom.projectDetailsForm.classList.remove('hidden');
+        } else {
+            dom.projectDetailsForm.classList.add('hidden');
+        }
+    }
+
+    async function handleProjectSave() {
+        const selectedName = dom.projectSelector.value;
+
+        if (!allProjects[selectedName]) {
+            showStatus('No project selected to save.', true);
+            return;
+        }
+
+        // Create the updated project object from form fields
+        const updatedProject = {
+            ...allProjects[selectedName], // Keep original properties, including name
+            status: dom.projectStatus.value,
+            startDate: dom.projectStartDate.value,
+            endDate: dom.projectEndDate.value,
+        };
+
+        // Update the local flat object.
+        allProjects[selectedName] = updatedProject;
+
+        try {
+            // Convert the flat project data to the required nested structure for saving.
+            const structuredDataToSave = structureProjectsForSaving(allProjects);
+
+            // Save the newly structured data back to the data store under the 'name' key in the 'projects' module.
+            await dataManager.setItem('projects', 'name', structuredDataToSave);
+
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus('Project details saved.');
+            setProjectEditMode(false);
+        } catch (error) {
+            console.error('Failed to save project:', error);
+            showStatus('Error saving project.', true);
+            // Revert local changes if save fails
+            allProjects[selectedName] = originalProjectData;
+        }
+    }
+
+    function handleProjectCancelEdit() {
+        // Revert form from stored original data
+        if (originalProjectData.name) {
+            dom.projectStatus.value = originalProjectData.status || 'Not Started';
+            dom.projectStartDate.value = originalProjectData.startDate || '';
+            dom.projectEndDate.value = originalProjectData.endDate || '';
+        }
+        setProjectEditMode(false);
+    }
+
+    async function loadProjectData() {
+        if (!dom.projectSelector) return;
+        try {
+            // The project data is stored under the 'name' key in the 'projects' module.
+            const projectsByName = await dataManager.getItem('projects', 'name') || {};
+
+            // Flatten the nested structure from the datastore into a simple object for easy lookup.
+            allProjects = {};
+            Object.entries(projectsByName).forEach(([projectName, projectDetailsArray]) => {
+                // The datastore has an array for each project, we'll take the first element.
+                if (projectDetailsArray && projectDetailsArray.length > 0) {
+                    const projectData = projectDetailsArray[0];
+                    // Reconstruct the flat project object, adding the name back in.
+                    allProjects[projectName] = {
+                        name: projectName,
+                        ...projectData,
+                    };
+                }
+            });
+
+            // The active project name is stored in the 'system' module.
+            activeProjectName = await dataManager.getItem('system', 'activeProjectName');
+
+            // Populate dropdown
+            dom.projectSelector.innerHTML = ''; // Clear existing
+            const noneOption = document.createElement('option');
+            noneOption.value = '';
+            noneOption.textContent = '-- Select a Project --';
+            dom.projectSelector.appendChild(noneOption);
+
+            // Populate the dropdown from the flattened project object
+            Object.values(allProjects).forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.name;
+                option.textContent = project.name;
+                if (project.name === activeProjectName) {
+                    option.selected = true;
+                }
+                dom.projectSelector.appendChild(option);
+            });
+
+            // Show details for the initially loaded project
+            updateProjectDetails(activeProjectName);
+        } catch (error) {
+            console.error('Failed to load project data:', error);
+            showStatus('Error loading project data.', true);
+        }
+    }
+
+    async function handleProjectChange() {
+        const selectedName = dom.projectSelector.value;
+        updateProjectDetails(selectedName); // This will now populate the form and reset edit mode
+
+        if (selectedName === activeProjectName) return; // No change to save
+
+        try {
+            await dataManager.setItem('system', 'activeProjectName', selectedName);
+            activeProjectName = selectedName; // Update local state
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus('Active project updated.');
+        } catch (error) {
+            console.error('Failed to save active project:', error);
+            showStatus('Error saving active project.', true);
+        }
+    }
+
+    // --- Modal Functions ---
+    function openAddProjectModal() {
+        if (dom.addProjectModal) {
+            dom.addProjectForm.reset();
+            dom.addProjectModal.classList.add('active');
+            document.getElementById('new-project-name').focus();
+        }
+    }
+
+    function closeAddProjectModal() {
+        if (dom.addProjectModal) {
+            dom.addProjectModal.classList.remove('active');
+        }
+    }
+
+    async function handleAddProjectSave(e) {
+        e.preventDefault();
+        const newName = document.getElementById('new-project-name').value.trim();
+        if (!newName) {
+            alert('Project Name is required.');
+            return;
+        }
+        // Enforce uniqueness for new projects
+        if (allProjects[newName]) {
+            alert(`A project named "${newName}" already exists. Please choose a unique name.`);
+            return;
+        }
+
+        const newProject = {
+            // No 'id' field anymore
+            name: newName,
+            startDate: document.getElementById('new-project-start-date').value,
+            endDate: document.getElementById('new-project-end-date').value,
+            status: document.getElementById('new-project-status').value,
+        };
+
+        // Create a temporary new flat object of projects to work with.
+        const updatedProjects = { ...allProjects, [newProject.name]: newProject };
+
+        try {
+            // Convert the flat project data to the required nested structure for saving.
+            const structuredDataToSave = structureProjectsForSaving(updatedProjects);
+
+            // Save all data changes to the persistent store first.
+            await dataManager.setItem('projects', 'name', structuredDataToSave);
+            await dataManager.setItem('system', 'activeProjectName', newProject.name);
+
+            // --- If save is successful, update the application's in-memory state and the UI directly ---
+
+            // 1. Update local state variables.
+            allProjects = updatedProjects;
+            activeProjectName = newProject.name;
+
+            // 2. Add the new project to the dropdown.
+            const option = document.createElement('option');
+            option.value = newProject.name;
+            option.textContent = newProject.name;
+            dom.projectSelector.appendChild(option);
+
+            // 3. Select the new project in the dropdown.
+            dom.projectSelector.value = newProject.name;
+
+            // 4. Update the details form to show the new project's data.
+            updateProjectDetails(newProject.name);
+
+            // 5. Update global dirty status and show a success message.
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus('New project added successfully.');
+
+            // 6. Close the modal.
+            closeAddProjectModal();
+        } catch (error) {
+            console.error('Failed to add project:', error);
+            showStatus('Error adding project.', true);
+            // No rollback is needed because the main `allProjects` array was not modified.
+        }
+    }
+
     // Attach Event Listeners
     dom.editBtn.addEventListener('click', () => setEditMode(true));
     dom.cancelBtn.addEventListener('click', handleCancel);
@@ -242,14 +515,33 @@ function setupSystemView() {
         handleSave();
     });
 
+    // Project Listeners
+    if (dom.projectSelector) {
+        dom.projectSelector.addEventListener('change', handleProjectChange);
+    }
+    if (dom.editProjectBtn) dom.editProjectBtn.addEventListener('click', () => setProjectEditMode(true));
+    if (dom.cancelProjectBtn) dom.cancelProjectBtn.addEventListener('click', handleProjectCancelEdit);
+    if (dom.projectDetailsForm) dom.projectDetailsForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleProjectSave();
+    });
+
+    // Modal Listeners
+    if (dom.addProjectBtn) dom.addProjectBtn.addEventListener('click', openAddProjectModal);
+    if (dom.modalCloseBtn) dom.modalCloseBtn.addEventListener('click', closeAddProjectModal);
+    if (dom.modalCancelBtn) dom.modalCancelBtn.addEventListener('click', closeAddProjectModal);
+    if (dom.addProjectForm) dom.addProjectForm.addEventListener('submit', handleAddProjectSave);
+
     // Initial Load
     loadUserData();
+    loadProjectData();
 
     // Return a "teardown" function to be called before navigating away
     return () => {
         if (isFormDirty()) {
-            return confirm('You have unsaved changes in User Information. Are you sure you want to leave?');
+            return confirm('You have unsaved changes for the User. Are you sure you want to leave?');
         }
+        // We don't need a guard for project changes because they save immediately.
         return true; // OK to navigate
     };
 }
@@ -496,13 +788,9 @@ function setupDataManagement() {
     updateGlobalDirtyStatusUI(); // Set initial status
     refreshDisplay(); // Initial data load for this view
 
-    // Return a "teardown" function for consistency with the navigation guard pattern
-    return () => {
-        if (globalState.isDirty) {
-            return confirm('You have unsaved changes in the Data Store. Are you sure you want to leave?');
-        }
-        return true; // OK to navigate
-    };
+    // No teardown function is needed here. The global dirty status is indicated
+    // in the UI, and blocking navigation is too intrusive for this state.
+    return null;
 }
 
 function setupStyleManagement() {

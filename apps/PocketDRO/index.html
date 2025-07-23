@@ -28,7 +28,29 @@
         </nav>
     </header>
 
-    <main id="content-area"></main>
+    <main id="content-area">
+        <!-- Content will be loaded here -->
+    </main>
+
+    <!-- Global Modal for adding projects -->
+    <div id="add-project-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Project</h2>
+                <button id="modal-close-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <form id="add-project-form">
+                <div class="form-field"><label for="new-project-name">Project Name</label><input type="text" id="new-project-name" required></div>
+                <div class="form-field"><label for="new-project-start-date">Start Date</label><input type="date" id="new-project-start-date"></div>
+                <div class="form-field"><label for="new-project-end-date">End Date</label><input type="date" id="new-project-end-date"></div>
+                <div class="form-field"><label for="new-project-status">Status</label><select id="new-project-status"><option value="Not Started">Not Started</option><option value="In Progress">In Progress</option><option value="On Hold">On Hold</option><option value="Completed">Completed</option></select></div>
+                <div class="form-actions" style="justify-content: flex-end;">
+                    <button type="button" id="modal-cancel-btn">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>

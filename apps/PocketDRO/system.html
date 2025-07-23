@@ -1,9 +1,9 @@
 <h1>System Settings</h1>
 
-<div class="card">
-    <h2>User Information</h2>
+<div class="card user-info-card">
+    <h2>User</h2>
     <form id="user-info-form">
-        <div class="user-info-grid" style="margin-bottom: 15px;">
+        <div class="user-info-grid">
             <div class="form-field">
                 <label for="user-name">Name</label>
                 <input type="text" id="user-name" placeholder="e.g., Jane Doe" disabled>
@@ -38,17 +38,50 @@
             </div>
         </div>
         <!-- Button group for form actions -->
-        <div class="form-actions" style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
-            <div>
-                <button type="button" id="edit-user-info-btn">Edit</button>
-                <button type="submit" id="save-user-info-btn" style="display: none;">Save Changes</button>
-                <button type="button" id="cancel-edit-btn" style="display: none;">Cancel</button>
+        <div class="form-actions">
+            <button type="button" id="edit-user-info-btn">Edit</button>
+            <button type="submit" id="save-user-info-btn" disabled>Save Changes</button>
+            <button type="button" id="cancel-edit-btn" disabled>Cancel</button>
+            <button type="button" id="backup-btn" class="btn-danger hidden">Backup to File</button>
+        </div>
+        <p id="user-info-status" role="status" aria-live="polite" class="hidden"></p>
+        <p id="data-status-indicator" role="status" aria-live="polite"></p>
+    </form>
+</div>
+
+<div class="card project-card">
+    <div class="card-header">
+        <h2>Project</h2>
+        <button type="button" id="add-project-btn" class="btn-primary">Add New Project</button>
+    </div>
+    <div class="form-field">
+        <label for="project-selector">Project</label>
+        <select id="project-selector" name="project-selector"></select>
+    </div>
+    <form id="project-details-form" class="hidden">
+        <div class="project-details-grid">
+            <div class="form-field">
+                <label for="project-status">Status</label>
+                <select id="project-status" disabled>
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                </select>
             </div>
-            <div>
-                <button type="button" id="backup-btn" class="btn-danger" style="display: none;">Backup to File</button>
+            <div class="form-field">
+                <label for="project-start-date">Start Date</label>
+                <input type="date" id="project-start-date" disabled>
+            </div>
+            <div class="form-field">
+                <label for="project-end-date">End Date</label>
+                <input type="date" id="project-end-date" disabled>
             </div>
         </div>
-        <p id="user-info-status" role="status" aria-live="polite" style="display: none; margin-top: 10px;"></p>
-        <p id="data-status-indicator" role="status" aria-live="polite"></p>
+        <div class="form-actions">
+            <button type="button" id="edit-project-btn">Edit</button>
+            <button type="submit" id="save-project-btn" disabled>Save Project</button>
+            <button type="button" id="cancel-project-btn" disabled>Cancel</button>
+        </div>
     </form>
 </div>

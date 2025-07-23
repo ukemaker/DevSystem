@@ -21,6 +21,8 @@ body {
 
 input[type="text"],
 input[type="email"],
+input[type="tel"],
+input[type="date"],
 input[type="file"],
 select,
 input[type="color"] {
@@ -55,6 +57,16 @@ button {
 button:hover {
     background-color: #e9ecef;
 }
+button.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+button.btn-primary:hover {
+    opacity: 0.9;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
 button.btn-danger {
     background-color: var(--danger-color);
     color: white;
@@ -63,6 +75,12 @@ button.btn-danger {
 button.btn-danger:hover {
     background-color: var(--danger-color-hover);
     border-color: var(--danger-color-hover);
+}
+button:disabled {
+    background-color: var(--border-color-light);
+    color: #6c757d;
+    cursor: not-allowed;
+    border-color: var(--border-color);
 }
 
 
@@ -186,8 +204,6 @@ nav#sidebar-nav {
     border-radius: 5px;
     padding: 20px;
     margin-bottom: 20px;
-    max-width: 50%;
-    min-width: 500px; /* Prevent form from becoming too narrow */
 }
 .form-group {
     display: flex;
@@ -196,12 +212,36 @@ nav#sidebar-nav {
     align-items: center;
 }
 
+/* --- 5b. Card Components --- */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Align items to the top */
+    margin-bottom: 20px;
+}
+.card-header h2 {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 1.2rem;
+}
+.card-header .search-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.card-header .search-container input {
+    /* Optional: give search a slightly smaller look */
+    padding: 6px 10px;
+    font-size: 0.9rem;
+}
+
 /* --- 5a. Form-specific Components --- */
 .user-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px; /* Reduced spacing */
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .form-field {
@@ -220,10 +260,159 @@ nav#sidebar-nav {
     color: #555;
 }
 
+.form-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Constrain the width of the settings cards to half their container */
+.user-info-card,
+.project-card {
+    max-width: 50%;
+}
+
+.project-details-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+/* Style for read-only fields to look like disabled inputs for consistency */
+.read-only-field {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 1rem;
+    background-color: var(--border-color-light);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: #6c757d;
+    min-height: 21px; /* Ensures consistent height with inputs */
+}
+
+/* Status message for forms like the user-info form */
+#user-info-status {
+    margin-top: 10px;
+}
+
 @media (max-width: 768px) {
     .user-info-grid {
         grid-template-columns: 1fr;
     }
+
+    .project-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* On smaller screens, let the cards take the full width for readability */
+    .user-info-card,
+    .project-card {
+        max-width: 100%;
+    }
+}
+
+/* --- 5c. Table Components --- */
+.table-container {
+    width: 100%;
+    overflow-x: auto; /* For responsiveness on small screens */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover {
+    background-color: #f1f3f5;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    display: inline-block;
+    min-width: 80px;
+}
+
+.status-in-progress { background-color: #17a2b8; }
+.status-completed { background-color: #28a745; }
+.status-not-started { background-color: #6c757d; }
+.status-on-hold { background-color: #ffc107; color: #333; }
+
+.actions-cell button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+}
+
+/* --- 5d. Modal Components --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none; /* Hidden by default */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background-color: var(--background-content);
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    color: #6c757d;
+}
+
+.modal-close-btn:hover {
+    color: #333;
 }
 
 /* --- 6. Data Management Specific --- */
@@ -312,4 +501,10 @@ nav#sidebar-nav {
     padding: 20px;
     text-align: center;
     margin-top: 20px;
+}
+
+/* --- 8. Utility Classes --- */
+.hidden {
+    /* Use !important to ensure this utility class always overrides other display properties */
+    display: none !important;
 }

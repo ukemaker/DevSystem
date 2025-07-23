@@ -6,29 +6,6 @@
       "value": "Item"
     }
   },
-  "Bolt-Hole": {
-    "NumberOfHoles": "6",
-    "Input-Unit": "Inch",
-    "Output-Unit": "Inch"
-  },
-  "Arc-Milling": {
-    "NumberOfSteps": "20",
-    "Input-Unit": "Inch",
-    "Output-Unit": "Inch"
-  },
-  "Calc-Conv": {
-    "Input-Unit": "Inch",
-    "Output-Unit": "Inch",
-    "Convert From": "Inch",
-    "Convert To": "Inch",
-    "Divide By": "2",
-    "Multiply By": "2"
-  },
-  "Line-Hole": {
-    "Input-Unit": "Inch",
-    "Output-Unit": "Inch",
-    "NumberOfHoles": "3"
-  },
   "system": {
     "name": "Michael DaSilva",
     "email": "ukemkr@gmail.com",
@@ -37,6 +14,25 @@
     "street": "2547 8th St. STE 28",
     "city": "BERKELEY",
     "state": "CA",
-    "phone": "5108598532"
+    "phone": "5108598532",
+    "activeProjectName": "Development System"
+  },
+  "projects": {
+    "name": {
+      "PocketDRO": [
+        {
+          "startDate": "2025-07-05",
+          "endDate": "2025-07-17",
+          "status": "Not Started"
+        }
+      ],
+      "Development System": [
+        {
+          "startDate": "2025-07-25",
+          "endDate": "2025-07-08",
+          "status": "On Hold"
+        }
+      ]
+    }
   }
 }
