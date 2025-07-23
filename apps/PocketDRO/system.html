@@ -39,14 +39,27 @@
         </div>
         <!-- Button group for form actions -->
         <div class="form-actions">
-            <button type="button" id="edit-user-info-btn">Edit</button>
-            <button type="submit" id="save-user-info-btn" disabled>Save Changes</button>
-            <button type="button" id="cancel-edit-btn" disabled>Cancel</button>
-            <button type="button" id="backup-btn" class="btn-danger hidden">Backup to File</button>
+            <div>
+                <button type="button" id="edit-user-info-btn">Edit</button>
+                <button type="submit" id="save-user-info-btn" disabled>Save Changes</button>
+                <button type="button" id="cancel-edit-btn" disabled>Cancel</button>
+            </div>
         </div>
         <p id="user-info-status" role="status" aria-live="polite" class="hidden"></p>
         <p id="data-status-indicator" role="status" aria-live="polite"></p>
     </form>
+    <!-- File actions are global and should not be part of the user-info form. -->
+    <!-- Moving them here resolves the event conflict and improves semantics. -->
+    <div class="form-actions" style="margin-top: 15px; border-top: 1px solid var(--border-color-light); padding-top: 15px;">
+        <p id="file-actions-status" role="status" aria-live="polite" class="hidden" style="margin: 0;"></p>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" id="user-save-to-file-btn">Save To File</button>
+            <label class="btn-like-label">
+                Load From File
+                <input type="file" id="user-load-from-file-input" class="file-input-hidden" accept=".json">
+            </label>
+        </div>
+    </div>
 </div>
 
 <div class="card project-card">

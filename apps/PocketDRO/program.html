@@ -28,8 +28,10 @@
         <h3>Import / Export</h3>
         <div class="form-group">
             <button id="export-btn">Export to File</button>
-            <input type="file" id="import-file-input" accept=".json" class="hidden">
-            <button id="import-btn">Import from File</button>
+            <label class="btn-like-label">
+                Import from File
+                <input type="file" id="import-file-input" accept=".json" class="file-input-hidden">
+            </label>
             <button type="button" id="backup-btn" class="btn-danger hidden">Backup Changes</button>
         </div>
         <p id="data-status-indicator"></p>

@@ -18,21 +18,15 @@
     "activeProjectName": "Development System"
   },
   "projects": {
-    "name": {
-      "PocketDRO": [
-        {
-          "startDate": "2025-07-05",
-          "endDate": "2025-07-17",
-          "status": "Not Started"
-        }
-      ],
-      "Development System": [
-        {
-          "startDate": "2025-07-25",
-          "endDate": "2025-07-08",
-          "status": "On Hold"
-        }
-      ]
+    "PocketDRO": {
+      "startDate": "2025-07-05",
+      "endDate": "2025-07-17",
+      "status": "Not Started"
+    },
+    "Development System": {
+      "startDate": "2025-07-25",
+      "endDate": "2025-07-08",
+      "status": "On Hold"
     }
   }
 }

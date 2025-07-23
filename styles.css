@@ -46,15 +46,21 @@ input[type="color"] {
     width: auto;
 }
 
-button {
+button,
+.btn-like-label {
     padding: 8px 15px;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     background-color: #f8f9fa;
     cursor: pointer;
     font-size: 1rem;
+    display: inline-block;
+    text-align: center;
+    user-select: none;
 }
-button:hover {
+
+button:hover,
+.btn-like-label:hover {
     background-color: #e9ecef;
 }
 button.btn-primary {
@@ -263,6 +269,7 @@ nav#sidebar-nav {
 .form-actions {
     display: flex;
     gap: 10px;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -507,4 +514,17 @@ tr:hover {
 .hidden {
     /* Use !important to ensure this utility class always overrides other display properties */
     display: none !important;
+}
+
+/* For visually hiding file inputs while keeping them functional for labels */
+.file-input-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

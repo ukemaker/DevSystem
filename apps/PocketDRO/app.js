@@ -59,21 +59,18 @@ function updateGlobalDirtyStatusUI() {
  * This function does NOT change the application's dirty state.
  */
 async function handleExportOnly() {
-    try {
-        const { blob, filename } = await dataManager.getExportableJson();
+    // We get the data blob from the manager, but override the filename for consistency.
+    const { blob } = await dataManager.getExportableJson();
+    const filename = 'datastore.json';
 
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        console.error('Failed to export data:', error);
-        alert('Error exporting data.');
-    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 /**
@@ -85,13 +82,56 @@ async function handleBackupAndReset() {
     updateGlobalDirtyStatusUI();
 }
 
+/**
+ * Handles the global IMPORT process by reading a file, loading it via the dataManager,
+ * and then reloading the current view to reflect the changes.
+ * @param {Event} event - The file input change event.
+ */
+async function handleGlobalImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Get a reference to the input element to clear it later.
+    const fileInput = event.target;
+
+    try {
+        await dataManager.loadDataFromJson(file);
+        globalState.isDirty = false; // After a successful load, the data is in sync
+
+        if (fileInput) {
+            fileInput.value = '';
+        }
+
+        // Reload the current view to reflect the new data from the imported file.
+        const viewToReload = currentView;
+        currentView = null; // Force a reload by clearing the current view state
+        
+        // Create a callback to show the success message AFTER the view has reloaded.
+        const showSuccessMessage = () => {
+            const statusEl = document.getElementById('file-actions-status');
+            if (statusEl) {
+                statusEl.textContent = 'Data loaded successfully!';
+                statusEl.classList.remove('hidden');
+                statusEl.style.color = 'green';
+                setTimeout(() => { statusEl.classList.add('hidden'); }, 3000);
+            }
+        };
+
+        await loadView(viewToReload, showSuccessMessage);
+
+    } catch (error) {
+        // Re-throw the error to be caught by the calling event listener
+        throw error;
+    }
+}
+
 // Map view names to their setup functions for scalability
 const viewInitializers = {
     'program': setupProgramView,
     'system': setupSystemView,
 };
 
-async function loadView(viewName) {
+async function loadView(viewName, onLoadCallback = null) {
     if (currentView === viewName) return;
 
     // Navigation Guard: Check if we can leave the current view
@@ -126,6 +166,11 @@ async function loadView(viewName) {
             currentViewTeardown = viewInitializers[viewName]();
         }
 
+        // Run the post-load callback if it exists
+        if (onLoadCallback) {
+            onLoadCallback();
+        }
+
     } catch (error) {
         console.error(`Error loading view: ${viewName}`, error);
         contentArea.innerHTML = `<p>Error loading module. Please check the console.</p>`;
@@ -141,6 +186,11 @@ function setupSystemView() {
         saveBtn: document.getElementById('save-user-info-btn'),
         cancelBtn: document.getElementById('cancel-edit-btn'),
         status: document.getElementById('user-info-status'),
+
+        // New buttons for user data import/export
+        userSaveToFileBtn: document.getElementById('user-save-to-file-btn'),
+        userLoadFromFileInput: document.getElementById('user-load-from-file-input'),
+        fileActionsStatus: document.getElementById('file-actions-status'),
 
         // Project section elements
         projectSelector: document.getElementById('project-selector'),
@@ -173,6 +223,14 @@ function setupSystemView() {
         dom.status.classList.remove('hidden');
         dom.status.style.color = isError ? 'var(--danger-color)' : 'green';
         setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
+    }
+
+    function showFileActionStatus(message, isError = false, duration = 3000) {
+        if (!dom.fileActionsStatus) return;
+        dom.fileActionsStatus.textContent = message;
+        dom.fileActionsStatus.classList.remove('hidden');
+        dom.fileActionsStatus.style.color = isError ? 'var(--danger-color)' : 'green';
+        setTimeout(() => { dom.fileActionsStatus.classList.add('hidden'); }, duration);
     }
 
     // Gets current data from the form fields
@@ -256,24 +314,6 @@ function setupSystemView() {
         setEditMode(false);
     }
 
-    /**
-     * Converts the flat `allProjects` object into the nested structure required for saving in datastore.json.
-     * @param {Object} projectsObject - The flat `allProjects` object.
-     * @returns {Object} A structured object where keys are project names.
-     */
-    function structureProjectsForSaving(projectsObject) {
-        const structured = {};
-        for (const project of Object.values(projectsObject)) {
-            const projectName = project.name;
-            // Create a copy of the project details, excluding the name itself.
-            const projectDetails = { ...project };
-            delete projectDetails.name;
-            // The datastore structure uses an array for each project's details.
-            structured[projectName] = [projectDetails];
-        }
-        return structured;
-    }
-
     function setProjectEditMode(isEditing) {
         if (!dom.projectInputs) return;
         dom.projectInputs.forEach(input => input.disabled = !isEditing);
@@ -329,15 +369,17 @@ function setupSystemView() {
             endDate: dom.projectEndDate.value,
         };
 
-        // Update the local flat object.
-        allProjects[selectedName] = updatedProject;
+        // Prepare just the details for saving (without the 'name' property which is for internal UI use).
+        const { name, ...detailsToSave } = updatedProject;
 
         try {
-            // Convert the flat project data to the required nested structure for saving.
-            const structuredDataToSave = structureProjectsForSaving(allProjects);
+            // Save only the updated project under its name as the key.
+            // This is more granular and aligns with the key-value nature of the data store.
+            await dataManager.setItem('projects', selectedName, detailsToSave);
 
-            // Save the newly structured data back to the data store under the 'name' key in the 'projects' module.
-            await dataManager.setItem('projects', 'name', structuredDataToSave);
+            // If save is successful, update the main in-memory state.
+            allProjects[selectedName] = updatedProject;
+            originalProjectData = { ...updatedProject }; // Update original data for cancel functionality
 
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
@@ -346,8 +388,7 @@ function setupSystemView() {
         } catch (error) {
             console.error('Failed to save project:', error);
             showStatus('Error saving project.', true);
-            // Revert local changes if save fails
-            allProjects[selectedName] = originalProjectData;
+            // No need to revert, as `allProjects` was not modified until after the successful save.
         }
     }
 
@@ -364,21 +405,18 @@ function setupSystemView() {
     async function loadProjectData() {
         if (!dom.projectSelector) return;
         try {
-            // The project data is stored under the 'name' key in the 'projects' module.
-            const projectsByName = await dataManager.getItem('projects', 'name') || {};
+            // Get all data from the store and select the 'projects' module.
+            const allData = await dataManager.getAllItems();
+            const projectsFromStore = allData.projects || {};
 
-            // Flatten the nested structure from the datastore into a simple object for easy lookup.
+            // The data structure from the store is already flat. We just need to add the 'name' property
+            // to each project object for internal consistency in the `allProjects` map.
             allProjects = {};
-            Object.entries(projectsByName).forEach(([projectName, projectDetailsArray]) => {
-                // The datastore has an array for each project, we'll take the first element.
-                if (projectDetailsArray && projectDetailsArray.length > 0) {
-                    const projectData = projectDetailsArray[0];
-                    // Reconstruct the flat project object, adding the name back in.
-                    allProjects[projectName] = {
-                        name: projectName,
-                        ...projectData,
-                    };
-                }
+            Object.entries(projectsFromStore).forEach(([projectName, projectDetails]) => {
+                allProjects[projectName] = {
+                    name: projectName,
+                    ...(typeof projectDetails === 'object' && projectDetails !== null ? projectDetails : {}),
+                };
             });
 
             // The active project name is stored in the 'system' module.
@@ -391,7 +429,7 @@ function setupSystemView() {
             noneOption.textContent = '-- Select a Project --';
             dom.projectSelector.appendChild(noneOption);
 
-            // Populate the dropdown from the flattened project object
+            // Populate the dropdown from the `allProjects` object
             Object.values(allProjects).forEach(project => {
                 const option = document.createElement('option');
                 option.value = project.name;
@@ -456,54 +494,28 @@ function setupSystemView() {
             return;
         }
 
-        const newProject = {
-            // No 'id' field anymore
-            name: newName,
+        const newProjectDetails = {
             startDate: document.getElementById('new-project-start-date').value,
             endDate: document.getElementById('new-project-end-date').value,
             status: document.getElementById('new-project-status').value,
         };
 
-        // Create a temporary new flat object of projects to work with.
-        const updatedProjects = { ...allProjects, [newProject.name]: newProject };
-
         try {
-            // Convert the flat project data to the required nested structure for saving.
-            const structuredDataToSave = structureProjectsForSaving(updatedProjects);
-
             // Save all data changes to the persistent store first.
-            await dataManager.setItem('projects', 'name', structuredDataToSave);
-            await dataManager.setItem('system', 'activeProjectName', newProject.name);
+            // Save just the new project details under the new name as the key.
+            await dataManager.setItem('projects', newName, newProjectDetails);
+            await dataManager.setItem('system', 'activeProjectName', newName);
 
-            // --- If save is successful, update the application's in-memory state and the UI directly ---
+            // --- If save is successful, simply reload all project data to refresh the UI ---
+            await loadProjectData(); // This will rebuild the dropdown and select the new project.
 
-            // 1. Update local state variables.
-            allProjects = updatedProjects;
-            activeProjectName = newProject.name;
-
-            // 2. Add the new project to the dropdown.
-            const option = document.createElement('option');
-            option.value = newProject.name;
-            option.textContent = newProject.name;
-            dom.projectSelector.appendChild(option);
-
-            // 3. Select the new project in the dropdown.
-            dom.projectSelector.value = newProject.name;
-
-            // 4. Update the details form to show the new project's data.
-            updateProjectDetails(newProject.name);
-
-            // 5. Update global dirty status and show a success message.
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
             showStatus('New project added successfully.');
-
-            // 6. Close the modal.
             closeAddProjectModal();
         } catch (error) {
             console.error('Failed to add project:', error);
             showStatus('Error adding project.', true);
-            // No rollback is needed because the main `allProjects` array was not modified.
         }
     }
 
@@ -515,6 +527,29 @@ function setupSystemView() {
         handleSave();
     });
 
+    // User Data File Listeners
+    if (dom.userSaveToFileBtn) {
+        dom.userSaveToFileBtn.addEventListener('click', async () => {
+            try {
+                await handleExportOnly();
+                showFileActionStatus('File saved successfully.');
+            } catch (error) {
+                console.error('Failed to export data:', error);
+                showFileActionStatus('Error exporting data.', true);
+            }
+        });
+    }
+    if (dom.userLoadFromFileInput) {
+        dom.userLoadFromFileInput.addEventListener('change', async (event) => {
+            try {
+                await handleGlobalImport(event);
+            } catch (error) {
+                console.error('Failed to import data:', error);
+                showFileActionStatus(`Error: ${error.message}`, true, 5000);
+            }
+        });
+    }
+    
     // Project Listeners
     if (dom.projectSelector) {
         dom.projectSelector.addEventListener('change', handleProjectChange);
@@ -565,7 +600,6 @@ function setupDataManagement() {
         clearBtn: document.getElementById('clear-btn'),
         treeContainer: document.getElementById('data-display-tree'),
         exportBtn: document.getElementById('export-btn'),
-        importBtn: document.getElementById('import-btn'),
         importFileInput: document.getElementById('import-file-input'),
         statusIndicator: document.getElementById('data-status-indicator'),
     };
@@ -742,22 +776,6 @@ function setupDataManagement() {
         }
     }
 
-    async function handleLoadFromJson() {
-        const file = dom.importFileInput.files[0];
-        if (!file) return;
-        try {
-            await dataManager.loadDataFromJson(file);
-            globalState.isDirty = false;
-            updateGlobalDirtyStatusUI();
-            await refreshDisplay();
-            alert('Data loaded successfully!');
-        } catch (error) {
-            alert(`Failed to load data: ${error.message}`);
-        } finally {
-            dom.importFileInput.value = ''; // Reset file input
-        }
-    }
-
     // --- Event Listeners ---
     function attachEventListeners() {
         if (dom.setItemBtn) dom.setItemBtn.addEventListener('click', handleSetItem);
@@ -779,8 +797,7 @@ function setupDataManagement() {
         if (dom.keyInput) dom.keyInput.addEventListener('input', populateValueInput);
         if (dom.clearBtn) dom.clearBtn.addEventListener('click', handleClearAll);
         if (dom.exportBtn) dom.exportBtn.addEventListener('click', handleExportOnly);
-        if (dom.importBtn) dom.importBtn.addEventListener('click', () => dom.importFileInput.click());
-        if (dom.importFileInput) dom.importFileInput.addEventListener('change', handleLoadFromJson);
+        if (dom.importFileInput) dom.importFileInput.addEventListener('change', handleGlobalImport);
     }
 
     // --- Initialization ---
@@ -800,24 +817,79 @@ function setupStyleManagement() {
     }
 }
 
-// --- App Initialization ---
-if (settingsToggle) {
-    settingsToggle.addEventListener('click', (e) => {
-        // Prevent navigation, just toggle the menu
-        e.preventDefault();
-        const navGroup = settingsToggle.closest('.nav-group');
-        if (navGroup) {
-            const isExpanded = navGroup.classList.toggle('expanded');
-            settingsToggle.setAttribute('aria-expanded', isExpanded);
+/**
+ * Loads initial data from the server-side datastore.json, but only if the
+ * local data store (localStorage) is empty. This prevents overwriting a
+ * user's session data on subsequent visits.
+ */
+async function loadInitialData() {
+    try {
+        // First, check if there's already data in our local store.
+        const existingData = await dataManager.getAllItems();
+        const dataKeys = Object.keys(existingData).filter(k => k !== '_schema');
+
+        if (dataKeys.length > 0) {
+            console.log('Local storage already contains data. Skipping initial load from datastore.json.');
+            // Do not overwrite the user's session. The app will proceed with the data from localStorage.
+            return;
         }
-    });
+
+        // If we are here, local storage is empty. Let's fetch the initial data file.
+        console.log('Local storage is empty. Attempting to load initial data from datastore.json...');
+        const response = await fetch('../../datastore.json'); // Path relative to index.html
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                console.log('datastore.json not found on server. Starting with a completely empty store.');
+            } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return;
+        }
+
+        // We have the file, now load it using the dataManager, which expects a File object.
+        const blob = await response.blob();
+        const file = new File([blob], 'datastore.json', { type: 'application/json' });
+
+        await dataManager.loadDataFromJson(file);
+        
+        // After a fresh load from the master file, the state is clean.
+        globalState.isDirty = false;
+        console.log('Successfully populated local storage from datastore.json.');
+
+    } catch (error) {
+        console.error('Could not load initial data from datastore.json:', error);
+        alert('Warning: Could not load initial data from the server. The application will start with an empty data store.');
+    }
 }
 
-Object.entries(navButtons).forEach(([viewName, button]) => {
-    if (button) {
-        button.addEventListener('click', () => loadView(viewName));
+// --- App Initialization ---
+async function initializeApp() {
+    if (settingsToggle) {
+        settingsToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const navGroup = settingsToggle.closest('.nav-group');
+            if (navGroup) {
+                const isExpanded = navGroup.classList.toggle('expanded');
+                settingsToggle.setAttribute('aria-expanded', isExpanded);
+            }
+        });
     }
-});
 
-// Load the default view when the application starts
-loadView('bolt-hole-circle');
+    Object.entries(navButtons).forEach(([viewName, button]) => {
+        if (button) {
+            button.addEventListener('click', () => loadView(viewName));
+        }
+    });
+
+    // Load initial data from datastore.json if local storage is empty
+    await loadInitialData();
+
+    // Update the global UI status after initial data load attempt
+    updateGlobalDirtyStatusUI();
+
+    // Load the default view when the application starts
+    loadView('bolt-hole-circle');
+}
+
+initializeApp();
