@@ -41,9 +41,17 @@
             </div>
             <form id="add-project-form">
                 <div class="form-field"><label for="new-project-name">Project Name</label><input type="text" id="new-project-name" required></div>
-                <div class="form-field"><label for="new-project-start-date">Start Date</label><input type="date" id="new-project-start-date"></div>
-                <div class="form-field"><label for="new-project-end-date">End Date</label><input type="date" id="new-project-end-date"></div>
-                <div class="form-field"><label for="new-project-status">Status</label><select id="new-project-status"><option value="Not Started">Not Started</option><option value="In Progress">In Progress</option><option value="On Hold">On Hold</option><option value="Completed">Completed</option></select></div>
+                <div class="form-field">
+                    <label for="new-project-description">Description</label>
+                    <textarea id="new-project-description" rows="3" placeholder="A brief summary of the project..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="new-project-status">Status</label><select id="new-project-status"><option value="Not Started">Not Started</option><option value="In Progress">In Progress</option><option value="On Hold">On Hold</option><option value="Completed">Completed</option></select>
+                    </div>
+                    <div class="form-field"><label for="new-project-start-date">Start Date</label><input type="date" id="new-project-start-date"></div>
+                    <div class="form-field"><label for="new-project-end-date">End Date</label><input type="date" id="new-project-end-date"></div>
+                </div>
                 <div class="form-actions" style="justify-content: flex-end;">
                     <button type="button" id="modal-cancel-btn">Cancel</button>
                     <button type="submit" class="btn-primary">Save Project</button>

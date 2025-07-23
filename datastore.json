@@ -15,13 +15,14 @@
     "city": "BERKELEY",
     "state": "CA",
     "phone": "5108598532",
-    "activeProjectName": "Development System"
+    "activeProjectName": "PocketDRO"
   },
   "projects": {
     "PocketDRO": {
+      "description": "Description text asdsdfsaf",
+      "status": "In Progress",
       "startDate": "2025-07-05",
-      "endDate": "2025-07-17",
-      "status": "Not Started"
+      "endDate": "2025-07-17"
     },
     "Development System": {
       "startDate": "2025-07-25",

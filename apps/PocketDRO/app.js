@@ -19,6 +19,7 @@ const navButtons = {
 const settingsToggle = document.getElementById('nav-settings-toggle');
 
 let currentView = null;
+console.log(`[Init] currentView initialized to: '${currentView}'`);
 let currentViewTeardown = null; // Holds a function to run before leaving a view
 
 // --- Global State and UI Management for Data Persistence ---
@@ -59,18 +60,26 @@ function updateGlobalDirtyStatusUI() {
  * This function does NOT change the application's dirty state.
  */
 async function handleExportOnly() {
+    console.log(`[handleExportOnly] Creating and clicking download link.`);
     // We get the data blob from the manager, but override the filename for consistency.
     const { blob } = await dataManager.getExportableJson();
     const filename = 'datastore.json';
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    a.style.display = 'none'; // Keep it out of the visual layout
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // The download is initiated, but we must delay the cleanup.
+    // Removing the element and revoking the URL immediately can cancel the download in some browsers.
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log(`[handleExportOnly] Download link cleaned up.`);
+    }, 150); // A 150ms delay is generally safe.
 }
 
 /**
@@ -86,8 +95,9 @@ async function handleBackupAndReset() {
  * Handles the global IMPORT process by reading a file, loading it via the dataManager,
  * and then reloading the current view to reflect the changes.
  * @param {Event} event - The file input change event.
+ * @param {string} viewToReload - The name of the view to reload after import.
  */
-async function handleGlobalImport(event) {
+async function handleGlobalImport(event, viewToReload) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -103,7 +113,6 @@ async function handleGlobalImport(event) {
         }
 
         // Reload the current view to reflect the new data from the imported file.
-        const viewToReload = currentView;
         currentView = null; // Force a reload by clearing the current view state
         
         // Create a callback to show the success message AFTER the view has reloaded.
@@ -132,17 +141,34 @@ const viewInitializers = {
 };
 
 async function loadView(viewName, onLoadCallback = null) {
-    if (currentView === viewName) return;
+    console.log(`[loadView] START. Attempting to load view: '${viewName}'. Current view is: '${currentView}'.`);
+    // Allow reloading if currentView was explicitly set to null to force it
+    if (currentView === viewName && currentView !== null) {
+        console.log(`[loadView] END. View '${viewName}' is already current. Aborting.`);
+        return;
+    }
 
     // Navigation Guard: Check if we can leave the current view
     if (currentViewTeardown) {
-        if (!currentViewTeardown()) return; // Abort navigation if teardown returns false
+        console.log(`[loadView] Running teardown for '${currentView}'. Current view is: '${currentView}'.`);
+        if (!currentViewTeardown()) {
+            console.warn(`[loadView] Navigation away from '${currentView}' was blocked by its teardown function. Current view is: '${currentView}'.`);
+            // If we nulled out currentView to force a reload but were blocked, restore it.
+            if (currentView === null) currentView = viewName;
+            return; // Abort navigation
+        }
     }
 
     try {
         const response = await fetch(`${viewName}.html`);
         if (!response.ok) throw new Error(`Failed to load ${viewName}.html`);
         
+        // Set the current view state immediately after a successful fetch.
+        // This makes the application state consistent even if subsequent setup fails.
+        currentView = viewName;
+        sessionStorage.setItem('lastActiveView', viewName);
+        console.log(`%c[loadView] State Update. currentView is now: '${currentView}'. Saved to sessionStorage.`, 'color: green; font-weight: bold;');
+
         contentArea.innerHTML = await response.text();
 
         // Attach listener for backup button if it exists in the new view
@@ -153,8 +179,8 @@ async function loadView(viewName, onLoadCallback = null) {
         // Update UI status when view loads to reflect current dirty state
         updateGlobalDirtyStatusUI();
 
-        currentView = viewName;
-        currentViewTeardown = null; // Reset for the new view
+        currentViewTeardown = null;
+        console.log(`[loadView] Teardown reset. currentView is: '${currentView}'.`);
         
         // Update active nav button
         document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
@@ -162,23 +188,26 @@ async function loadView(viewName, onLoadCallback = null) {
         
         // Run the setup function for the loaded view if it exists
         if (viewInitializers[viewName]) {
+            console.log(`[loadView] Initializing view '${viewName}'. currentView is: '${currentView}'.`);
             // The setup function can return a "teardown" function
             currentViewTeardown = viewInitializers[viewName]();
+            console.log(`[loadView] View '${viewName}' initialized. currentView is: '${currentView}'.`);
         }
 
         // Run the post-load callback if it exists
         if (onLoadCallback) {
             onLoadCallback();
         }
-
     } catch (error) {
         console.error(`Error loading view: ${viewName}`, error);
         contentArea.innerHTML = `<p>Error loading module. Please check the console.</p>`;
     }
+    console.log(`[loadView] END. Finished loading '${viewName}'. Current view is: '${currentView}'.`);
 }
 
 // --- System Settings View ---
 function setupSystemView() {
+    console.log(`[setupSystemView] START. currentView is: '${currentView}'.`);
     const dom = {
         form: document.getElementById('user-info-form'),
         inputs: document.querySelectorAll('#user-info-form input[id]'),
@@ -198,10 +227,12 @@ function setupSystemView() {
         projectStatus: document.getElementById('project-status'), // now a select
         projectStartDate: document.getElementById('project-start-date'), // now an input
         projectEndDate: document.getElementById('project-end-date'), // now an input
-        projectInputs: document.querySelectorAll('#project-details-form input, #project-details-form select'),
+        projectDescription: document.getElementById('project-description'),
+        projectInputs: document.querySelectorAll('#project-details-form input, #project-details-form select, #project-details-form textarea'),
         editProjectBtn: document.getElementById('edit-project-btn'),
         saveProjectBtn: document.getElementById('save-project-btn'),
         cancelProjectBtn: document.getElementById('cancel-project-btn'),
+        deleteProjectBtn: document.getElementById('delete-project-btn'),
         addProjectBtn: document.getElementById('add-project-btn'),
 
         // Modal elements are global but managed here
@@ -246,16 +277,25 @@ function setupSystemView() {
     // Compares current form data to the originally loaded data
     function isFormDirty() {
         const currentData = getFormData();
-        // An unsaved form is dirty if any value differs from the original
-        return Object.keys(originalData).some(key => originalData[key] !== currentData[key]);
+        const dirty = Object.keys(originalData).some(key => {
+            const isDifferent = originalData[key] != currentData[key];
+            if (isDifferent) {
+                console.log(`[isFormDirty] Difference found for key '${key}': original='${originalData[key]}' (type: ${typeof originalData[key]}), current='${currentData[key]}' (type: ${typeof currentData[key]})`);
+            }
+            return isDifferent;
+        });
+        return dirty;
     }
 
     // Toggles the UI between viewing and editing states
     function setEditMode(isEditing) {
-        dom.inputs.forEach(input => (input.disabled = !isEditing));
-        // Hide the "Edit" button when in edit mode
-        dom.editBtn.classList.toggle('hidden', isEditing);
-        // Instead of hiding, we will enable/disable the Save/Cancel buttons
+        dom.inputs.forEach(input => (input.disabled = !isEditing));        
+        // Toggle visibility of buttons
+        dom.editBtn.hidden = isEditing;
+        dom.saveBtn.hidden = !isEditing;
+        dom.cancelBtn.hidden = !isEditing;
+
+        // Enable/disable buttons
         dom.saveBtn.disabled = !isEditing;
         dom.cancelBtn.disabled = !isEditing;
 
@@ -282,22 +322,22 @@ function setupSystemView() {
         }
     }
 
-    async function handleSave() {
+    // Saves the user form data to the data store and resets its dirty state.
+    async function saveUserForm() {
         const currentData = getFormData();
+        const savePromises = Object.entries(currentData).map(([key, formValue]) => {
+            return dataManager.setItem(moduleName, key, formValue.trim());
+        });
+        await Promise.all(savePromises);
+        originalData = { ...currentData }; // Update the pristine state
+        globalState.isDirty = true;
+        updateGlobalDirtyStatusUI();
+    }
+
+    async function handleSave() {
         try {
-            // Create a promise for each field to be saved
-            const savePromises = Object.entries(currentData).map(([key, formValue]) => {
-                return dataManager.setItem(moduleName, key, formValue.trim());
-            });
-            await Promise.all(savePromises); // Wait for all fields to be saved
-
-            originalData = { ...currentData }; // Update the original data to the new saved state
+            await saveUserForm();
             showStatus('User data saved successfully!');
-
-            // Set the global dirty flag and update UI
-            globalState.isDirty = true;
-            updateGlobalDirtyStatusUI();
-
             setEditMode(false);
         } catch (error) {
             console.error('Failed to save user data:', error);
@@ -317,9 +357,18 @@ function setupSystemView() {
     function setProjectEditMode(isEditing) {
         if (!dom.projectInputs) return;
         dom.projectInputs.forEach(input => input.disabled = !isEditing);
-        dom.editProjectBtn.classList.toggle('hidden', isEditing);
+
+        // Toggle visibility of buttons
+        dom.editProjectBtn.hidden = isEditing;
+        dom.saveProjectBtn.hidden = !isEditing;
+        dom.cancelProjectBtn.hidden = !isEditing;
+        dom.deleteProjectBtn.hidden = !isEditing;
+
+        // Enable/disable buttons
         dom.saveProjectBtn.disabled = !isEditing;
         dom.cancelProjectBtn.disabled = !isEditing;
+        dom.deleteProjectBtn.disabled = !isEditing;
+
         // Disable project selector and add button while editing
         dom.projectSelector.disabled = isEditing;
         dom.addProjectBtn.disabled = isEditing;
@@ -343,6 +392,7 @@ function setupSystemView() {
             dom.projectStatus.value = project.status || 'Not Started';
             dom.projectStartDate.value = project.startDate || '';
             dom.projectEndDate.value = project.endDate || '';
+            dom.projectDescription.value = project.description || '';
 
             // Store for cancellation
             originalProjectData = { ...project };
@@ -367,6 +417,7 @@ function setupSystemView() {
             status: dom.projectStatus.value,
             startDate: dom.projectStartDate.value,
             endDate: dom.projectEndDate.value,
+            description: dom.projectDescription.value.trim(),
         };
 
         // Prepare just the details for saving (without the 'name' property which is for internal UI use).
@@ -398,8 +449,47 @@ function setupSystemView() {
             dom.projectStatus.value = originalProjectData.status || 'Not Started';
             dom.projectStartDate.value = originalProjectData.startDate || '';
             dom.projectEndDate.value = originalProjectData.endDate || '';
+            dom.projectDescription.value = originalProjectData.description || '';
         }
         setProjectEditMode(false);
+    }
+
+    async function handleProjectDelete() {
+        const selectedName = dom.projectSelector.value;
+        if (!selectedName) {
+            showStatus('No project selected to delete.', true);
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete the project "${selectedName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            // Use the generic deleteItem from dataManager
+            await dataManager.deleteItem('projects', selectedName);
+
+            // If the deleted project was the active one, we need to pick a new active project.
+            if (activeProjectName === selectedName) {
+                // Get the remaining projects AFTER deletion
+                delete allProjects[selectedName];
+                const remainingProjectNames = Object.keys(allProjects);
+                const newActiveProjectName = remainingProjectNames.length > 0 ? remainingProjectNames[0] : ''; // Default to first or empty
+                
+                // Update the active project in the data store
+                await dataManager.setItem('system', 'activeProjectName', newActiveProjectName);
+            }
+
+            // Refresh the entire project UI. This will rebuild the selector and update details.
+            await loadProjectData();
+
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus(`Project "${selectedName}" deleted successfully.`);
+        } catch (error) {
+            console.error('Failed to delete project:', error);
+            showStatus('Error deleting project.', true);
+        }
     }
 
     async function loadProjectData() {
@@ -409,13 +499,21 @@ function setupSystemView() {
             const allData = await dataManager.getAllItems();
             const projectsFromStore = allData.projects || {};
 
-            // The data structure from the store is already flat. We just need to add the 'name' property
-            // to each project object for internal consistency in the `allProjects` map.
             allProjects = {};
             Object.entries(projectsFromStore).forEach(([projectName, projectDetails]) => {
+                const details = (typeof projectDetails === 'object' && projectDetails !== null) ? projectDetails : {};
+                // Normalize the project object to guarantee a consistent shape.
+                // This prevents errors from missing properties (e.g., 'description').
                 allProjects[projectName] = {
+                    // 1. Establish a default structure for all projects.
+                    description: '',
+                    status: 'Not Started',
+                    startDate: '',
+                    endDate: '',
+                    // 2. Spread the actual data, overwriting defaults.
+                    ...details,
+                    // 3. Ensure the name is always set correctly, as it's used as the key.
                     name: projectName,
-                    ...(typeof projectDetails === 'object' && projectDetails !== null ? projectDetails : {}),
                 };
             });
 
@@ -498,6 +596,7 @@ function setupSystemView() {
             startDate: document.getElementById('new-project-start-date').value,
             endDate: document.getElementById('new-project-end-date').value,
             status: document.getElementById('new-project-status').value,
+            description: document.getElementById('new-project-description').value.trim(),
         };
 
         try {
@@ -529,12 +628,34 @@ function setupSystemView() {
 
     // User Data File Listeners
     if (dom.userSaveToFileBtn) {
-        dom.userSaveToFileBtn.addEventListener('click', async () => {
+        dom.userSaveToFileBtn.addEventListener('click', async (event) => {
+            console.log(`%c[Save To File] Process Started. currentView is: '${currentView}'.`, 'color: blue; font-weight: bold;');
+            event.preventDefault(); // Prevent any default browser action
+            event.stopPropagation(); // Stop the event from bubbling up
             try {
+                // If the user form has pending changes, save them to the data store first
+                // to ensure the exported file reflects what the user sees on screen.
+                if (isFormDirty()) {
+                    console.log('[Save To File] User form is dirty. Saving changes...');
+                    await saveUserForm();
+                    console.log('[Save To File] User form saved successfully.');
+                } else {
+                    console.log('[Save To File] User form is clean. No changes to save.');
+                }
+
+                // Now that the data store is fully up-to-date, export it.
+                console.log('[Save To File] Exporting data to file...');
                 await handleExportOnly();
-                showFileActionStatus('File saved successfully.');
+                console.log('[Save To File] Export complete.');
+
+                // The application state is now in sync with the saved file.
+                console.log('[Save To File] Updating global state to clean.');
+                globalState.isDirty = false;
+                updateGlobalDirtyStatusUI(); // Update any relevant UI indicators
+                showFileActionStatus('File saved and unsaved changes cleared.');
+                console.log('%c[Save To File] Process Finished Successfully.', 'color: green; font-weight: bold;');
             } catch (error) {
-                console.error('Failed to export data:', error);
+                console.error('[Save To File] An error occurred during the process:', error);
                 showFileActionStatus('Error exporting data.', true);
             }
         });
@@ -542,7 +663,7 @@ function setupSystemView() {
     if (dom.userLoadFromFileInput) {
         dom.userLoadFromFileInput.addEventListener('change', async (event) => {
             try {
-                await handleGlobalImport(event);
+                await handleGlobalImport(event, 'system');
             } catch (error) {
                 console.error('Failed to import data:', error);
                 showFileActionStatus(`Error: ${error.message}`, true, 5000);
@@ -554,12 +675,21 @@ function setupSystemView() {
     if (dom.projectSelector) {
         dom.projectSelector.addEventListener('change', handleProjectChange);
     }
-    if (dom.editProjectBtn) dom.editProjectBtn.addEventListener('click', () => setProjectEditMode(true));
-    if (dom.cancelProjectBtn) dom.cancelProjectBtn.addEventListener('click', handleProjectCancelEdit);
-    if (dom.projectDetailsForm) dom.projectDetailsForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleProjectSave();
-    });
+    if (dom.editProjectBtn) {
+        dom.editProjectBtn.addEventListener('click', () => setProjectEditMode(true));
+    }
+    if (dom.cancelProjectBtn) {
+        dom.cancelProjectBtn.addEventListener('click', handleProjectCancelEdit);
+    }
+    if (dom.deleteProjectBtn) {
+        dom.deleteProjectBtn.addEventListener('click', handleProjectDelete);
+    }
+    if (dom.projectDetailsForm) {
+        dom.projectDetailsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleProjectSave();
+        });
+    }
 
     // Modal Listeners
     if (dom.addProjectBtn) dom.addProjectBtn.addEventListener('click', openAddProjectModal);
@@ -570,14 +700,18 @@ function setupSystemView() {
     // Initial Load
     loadUserData();
     loadProjectData();
+    console.log(`[setupSystemView] END. currentView is: '${currentView}'.`);
 
     // Return a "teardown" function to be called before navigating away
     return () => {
+        console.log(`[Teardown Guard] Checking for unsaved changes in 'system' view.`);
         if (isFormDirty()) {
+            console.warn(`[Teardown Guard] Form is dirty. Prompting user.`);
             return confirm('You have unsaved changes for the User. Are you sure you want to leave?');
         }
-        // We don't need a guard for project changes because they save immediately.
-        return true; // OK to navigate
+        console.log(`[Teardown Guard] Form is clean. Allowing navigation.`);
+        // We don't need a guard for project changes because they save immediately or have their own cancel flow.
+        return true; // OK to navigate away
     };
 }
 
@@ -797,7 +931,16 @@ function setupDataManagement() {
         if (dom.keyInput) dom.keyInput.addEventListener('input', populateValueInput);
         if (dom.clearBtn) dom.clearBtn.addEventListener('click', handleClearAll);
         if (dom.exportBtn) dom.exportBtn.addEventListener('click', handleExportOnly);
-        if (dom.importFileInput) dom.importFileInput.addEventListener('change', handleGlobalImport);
+        if (dom.importFileInput) {
+            dom.importFileInput.addEventListener('change', async (event) => {
+                try {
+                    await handleGlobalImport(event, 'program');
+                } catch (error) {
+                    console.error('Failed to import data from Program view:', error);
+                    alert(`Error importing data: ${error.message}`);
+                }
+            });
+        }
     }
 
     // --- Initialization ---
@@ -829,13 +972,11 @@ async function loadInitialData() {
         const dataKeys = Object.keys(existingData).filter(k => k !== '_schema');
 
         if (dataKeys.length > 0) {
-            console.log('Local storage already contains data. Skipping initial load from datastore.json.');
             // Do not overwrite the user's session. The app will proceed with the data from localStorage.
             return;
         }
 
         // If we are here, local storage is empty. Let's fetch the initial data file.
-        console.log('Local storage is empty. Attempting to load initial data from datastore.json...');
         const response = await fetch('../../datastore.json'); // Path relative to index.html
 
         if (!response.ok) {
@@ -855,7 +996,6 @@ async function loadInitialData() {
         
         // After a fresh load from the master file, the state is clean.
         globalState.isDirty = false;
-        console.log('Successfully populated local storage from datastore.json.');
 
     } catch (error) {
         console.error('Could not load initial data from datastore.json:', error);
@@ -865,6 +1005,7 @@ async function loadInitialData() {
 
 // --- App Initialization ---
 async function initializeApp() {
+    console.log(`%c[initializeApp] START. currentView is: '${currentView}'.`, 'color: purple; font-weight: bold;');
     if (settingsToggle) {
         settingsToggle.addEventListener('click', (e) => {
             e.preventDefault();
@@ -888,8 +1029,13 @@ async function initializeApp() {
     // Update the global UI status after initial data load attempt
     updateGlobalDirtyStatusUI();
 
-    // Load the default view when the application starts
-    loadView('bolt-hole-circle');
+    // Load the last active view from sessionStorage, or the default view.
+    // This makes the app resilient to unexpected page reloads.
+    const lastView = sessionStorage.getItem('lastActiveView');
+    const viewToLoad = lastView || 'bolt-hole-circle';
+    console.log(`[initializeApp] Restoring view. Found '${lastView || 'nothing'}' in sessionStorage. Loading '${viewToLoad}'.`);
+    loadView(viewToLoad);
+    console.log(`%c[initializeApp] END. currentView is: '${currentView}'.`, 'color: purple; font-weight: bold;');
 }
 
 initializeApp();

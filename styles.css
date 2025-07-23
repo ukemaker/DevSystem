@@ -259,6 +259,17 @@ nav#sidebar-nav {
     grid-column: 1 / -1; /* Span across all columns */
 }
 
+.form-row {
+    display: flex;
+    gap: 12px; /* Match the grid gap */
+    align-items: flex-start;
+}
+
+.form-row .form-field {
+    flex: 1; /* Allow fields to grow and share space */
+    min-width: 0; /* Prevents flex items from overflowing */
+}
+
 .form-field label {
     margin-bottom: 4px; /* Tighter spacing */
     font-size: 0.8rem;
@@ -283,7 +294,8 @@ nav#sidebar-nav {
     display: grid;
     grid-template-columns: 1fr;
     gap: 12px;
-    margin-top: 15px;
+    margin-top: 15px; /* Space from project selector */
+    margin-bottom: 15px; /* Space before action buttons */
 }
 
 /* Style for read-only fields to look like disabled inputs for consistency */

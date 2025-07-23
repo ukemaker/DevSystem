@@ -1,4 +1,5 @@
-<h1>System Settings</h1>
+<div style="width: 60%; margin: 0 auto;">
+    <h1>System Settings</h1>
 
 <div class="card user-info-card">
     <h2>User</h2>
@@ -41,18 +42,17 @@
         <div class="form-actions">
             <div>
                 <button type="button" id="edit-user-info-btn">Edit</button>
-                <button type="submit" id="save-user-info-btn" disabled>Save Changes</button>
-                <button type="button" id="cancel-edit-btn" disabled>Cancel</button>
+                <button type="submit" id="save-user-info-btn" disabled hidden>Save Changes</button>
+                <button type="button" id="cancel-edit-btn" disabled hidden>Cancel</button>
             </div>
         </div>
         <p id="user-info-status" role="status" aria-live="polite" class="hidden"></p>
-        <p id="data-status-indicator" role="status" aria-live="polite"></p>
     </form>
     <!-- File actions are global and should not be part of the user-info form. -->
     <!-- Moving them here resolves the event conflict and improves semantics. -->
-    <div class="form-actions" style="margin-top: 15px; border-top: 1px solid var(--border-color-light); padding-top: 15px;">
-        <p id="file-actions-status" role="status" aria-live="polite" class="hidden" style="margin: 0;"></p>
-        <div style="display: flex; gap: 10px;">
+    <div class="form-actions form-section-separator">
+        <p id="file-actions-status" role="status" aria-live="polite" class="hidden"></p>
+        <div class="button-group">
             <button type="button" id="user-save-to-file-btn">Save To File</button>
             <label class="btn-like-label">
                 Load From File
@@ -64,7 +64,7 @@
 
 <div class="card project-card">
     <div class="card-header">
-        <h2>Project</h2>
+        <h2>Active Project</h2>
         <button type="button" id="add-project-btn" class="btn-primary">Add New Project</button>
     </div>
     <div class="form-field">
@@ -73,28 +73,38 @@
     </div>
     <form id="project-details-form" class="hidden">
         <div class="project-details-grid">
-            <div class="form-field">
-                <label for="project-status">Status</label>
-                <select id="project-status" disabled>
-                    <option value="Not Started">Not Started</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Completed">Completed</option>
-                </select>
+            <div class="form-field full-width">
+                <label for="project-description">Description</label>
+                <textarea id="project-description" rows="3" placeholder="A brief summary of the project..." disabled></textarea>
             </div>
-            <div class="form-field">
-                <label for="project-start-date">Start Date</label>
-                <input type="date" id="project-start-date" disabled>
-            </div>
-            <div class="form-field">
-                <label for="project-end-date">End Date</label>
-                <input type="date" id="project-end-date" disabled>
+            <div class="form-row full-width">
+                <div class="form-field">
+                    <label for="project-status">Status</label>
+                    <select id="project-status" disabled>
+                        <option value="Not Started">Not Started</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="On Hold">On Hold</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="project-start-date">Start Date</label>
+                    <input type="date" id="project-start-date" disabled>
+                </div>
+                <div class="form-field">
+                    <label for="project-end-date">End Date</label>
+                    <input type="date" id="project-end-date" disabled>
+                </div>
             </div>
         </div>
         <div class="form-actions">
-            <button type="button" id="edit-project-btn">Edit</button>
-            <button type="submit" id="save-project-btn" disabled>Save Project</button>
-            <button type="button" id="cancel-project-btn" disabled>Cancel</button>
+            <div>
+                <button type="button" id="edit-project-btn">Edit</button>
+                <button type="submit" id="save-project-btn" disabled hidden>Save Project</button>
+                <button type="button" id="cancel-project-btn" disabled hidden>Cancel</button>
+            </div>
+            <button type="button" id="delete-project-btn" class="btn-danger" disabled hidden>Delete</button>
         </div>
     </form>
+</div>
 </div>
