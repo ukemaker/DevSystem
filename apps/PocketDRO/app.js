@@ -34,23 +34,14 @@ const globalState = {
 function updateGlobalDirtyStatusUI() {
     const backupBtn = document.getElementById('backup-btn');
     const statusIndicator = document.getElementById('data-status-indicator');
+    const isDirty = globalState.isDirty;
 
-    if (globalState.isDirty) {
-        if (statusIndicator) {
-            statusIndicator.textContent = 'Local storage has unsaved changes.';
-            statusIndicator.className = 'dirty';
-        }
-        if (backupBtn) {
-            backupBtn.style.display = 'inline-block';
-        }
-    } else {
-        if (statusIndicator) {
-            statusIndicator.textContent = 'Local storage is in sync.';
-            statusIndicator.className = 'synced';
-        }
-        if (backupBtn) {
-            backupBtn.style.display = 'none';
-        }
+    if (statusIndicator) {
+        statusIndicator.textContent = isDirty ? 'Local storage has unsaved changes.' : 'Local storage is in sync.';
+        statusIndicator.className = isDirty ? 'dirty' : 'synced';
+    }
+    if (backupBtn) {
+        backupBtn.style.display = isDirty ? 'inline-block' : 'none';
     }
 }
 
@@ -203,21 +194,21 @@ async function handleResetToDefaults() {
             newData._schema = JSON.parse(JSON.stringify(allData._schema));
         }
 
-        const modulesToReset = ['system', 'projects', 'machine']; // 'machine' is the module name
         let didReset = false;
 
-        // Rebuild the data store using only the default modules.
-        for (const moduleName of modulesToReset) {
-            // The default key for 'machine' is 'default-machines'
-            const defaultKey = moduleName === 'machine' ? 'default-machines' : `default-${moduleName}`;
-            if (allData[defaultKey]) {
-                // Copy the default data to the active module key (e.g., 'system').
-                newData[moduleName] = JSON.parse(JSON.stringify(allData[defaultKey]));
-                // Also copy the default module itself (e.g., 'default-system') to the new store.
+        // Rebuild the data store by finding all 'default-*' modules.
+        for (const defaultKey in allData) {
+            if (defaultKey.startsWith('default-')) {
+                // Derive the active module name from the default key.
+                // This handles the 'default-machines' -> 'machine' exception.
+                const activeKey = defaultKey === 'default-machines' 
+                    ? 'machine' 
+                    : defaultKey.replace('default-', '');
+
+                // Copy the default data to the active module key and the default module itself.
+                newData[activeKey] = JSON.parse(JSON.stringify(allData[defaultKey]));
                 newData[defaultKey] = JSON.parse(JSON.stringify(allData[defaultKey]));
                 didReset = true;
-            } else {
-                console.warn(`Default data for module '${moduleName}' not found. Skipping reset.`);
             }
         }
 
@@ -283,20 +274,13 @@ function setupSystemView() {
     let activeProjectName = null;
     let originalProjectData = {}; // For canceling project edits
 
-    function showStatus(message, isError = false, duration = 3000) {
-        if (!dom.status) return;
-        dom.status.textContent = message;
-        dom.status.classList.remove('hidden');
-        dom.status.style.color = isError ? 'var(--danger-color)' : 'green';
-        setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
-    }
-
-    function showBackupStatus(message, isError = false, duration = 3000) {
-        if (!dom.backupStatus) return;
-        dom.backupStatus.textContent = message;
-        dom.backupStatus.classList.remove('hidden');
-        dom.backupStatus.style.color = isError ? 'var(--danger-color)' : 'green';
-        setTimeout(() => { dom.backupStatus.classList.add('hidden'); }, duration);
+    // Generic status message helper
+    function showStatusMessage(element, message, isError = false, duration = 3000) {
+        if (!element) return;
+        element.textContent = message;
+        element.classList.remove('hidden');
+        element.style.color = isError ? 'var(--danger-color)' : 'green';
+        setTimeout(() => { element.classList.add('hidden'); }, duration);
     }
 
     // Gets current data from the form fields
@@ -313,11 +297,8 @@ function setupSystemView() {
     function isFormDirty() {
         const currentData = getFormData();
         const dirty = Object.keys(originalData).some(key => {
-            const isDifferent = originalData[key] != currentData[key];
-            if (isDifferent) {
-                console.log(`[isFormDirty] Difference found for key '${key}': original='${originalData[key]}' (type: ${typeof originalData[key]}), current='${currentData[key]}' (type: ${typeof currentData[key]})`);
-            }
-            return isDifferent;
+            // Use strict inequality to avoid type coercion issues (e.g., 5 != "5" is false).
+            return String(originalData[key]) !== String(currentData[key]);
         });
         return dirty;
     }
@@ -353,7 +334,7 @@ function setupSystemView() {
             setEditMode(false);
         } catch (error) {
             console.error('Failed to load user data:', error);
-            showStatus('Error loading user data.', true);
+            showStatusMessage(dom.status, 'Error loading user data.', true);
         }
     }
 
@@ -372,11 +353,11 @@ function setupSystemView() {
     async function handleSave() {
         try {
             await saveUserForm();
-            showStatus('User data saved successfully!');
+            showStatusMessage(dom.status, 'User data saved successfully!');
             setEditMode(false);
         } catch (error) {
             console.error('Failed to save user data:', error);
-            showStatus(`Error saving data: ${error.message}`, true);
+            showStatusMessage(dom.status, `Error saving data: ${error.message}`, true);
         }
     }
 
@@ -442,7 +423,7 @@ function setupSystemView() {
         const selectedName = dom.projectSelector.value;
 
         if (!allProjects[selectedName]) {
-            showStatus('No project selected to save.', true);
+            showStatusMessage(dom.status, 'No project selected to save.', true);
             return;
         }
 
@@ -469,11 +450,11 @@ function setupSystemView() {
 
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
-            showStatus('Project details saved.');
+            showStatusMessage(dom.status, 'Project details saved.');
             setProjectEditMode(false);
         } catch (error) {
             console.error('Failed to save project:', error);
-            showStatus('Error saving project.', true);
+            showStatusMessage(dom.status, 'Error saving project.', true);
             // No need to revert, as `allProjects` was not modified until after the successful save.
         }
     }
@@ -492,7 +473,7 @@ function setupSystemView() {
     async function handleProjectDelete() {
         const selectedName = dom.projectSelector.value;
         if (!selectedName) {
-            showStatus('No project selected to delete.', true);
+            showStatusMessage(dom.status, 'No project selected to delete.', true);
             return;
         }
 
@@ -520,10 +501,10 @@ function setupSystemView() {
 
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
-            showStatus(`Project "${selectedName}" deleted successfully.`);
+            showStatusMessage(dom.status, `Project "${selectedName}" deleted successfully.`);
         } catch (error) {
             console.error('Failed to delete project:', error);
-            showStatus('Error deleting project.', true);
+            showStatusMessage(dom.status, 'Error deleting project.', true);
         }
     }
 
@@ -577,7 +558,7 @@ function setupSystemView() {
             updateProjectDetails(activeProjectName);
         } catch (error) {
             console.error('Failed to load project data:', error);
-            showStatus('Error loading project data.', true);
+            showStatusMessage(dom.status, 'Error loading project data.', true);
         }
     }
 
@@ -592,10 +573,10 @@ function setupSystemView() {
             activeProjectName = selectedName; // Update local state
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
-            showStatus('Active project updated.');
+            showStatusMessage(dom.status, 'Active project updated.');
         } catch (error) {
             console.error('Failed to save active project:', error);
-            showStatus('Error saving active project.', true);
+            showStatusMessage(dom.status, 'Error saving active project.', true);
         }
     }
 
@@ -645,11 +626,11 @@ function setupSystemView() {
 
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
-            showStatus('New project added successfully.');
+            showStatusMessage(dom.status, 'New project added successfully.');
             closeAddProjectModal();
         } catch (error) {
             console.error('Failed to add project:', error);
-            showStatus('Error adding project.', true);
+            showStatusMessage(dom.status, 'Error adding project.', true);
         }
     }
 
@@ -687,11 +668,11 @@ function setupSystemView() {
                 console.log('[Save To File] Updating global state to clean.');
                 globalState.isDirty = false;
                 updateGlobalDirtyStatusUI(); // Update any relevant UI indicators
-                showBackupStatus('File saved and unsaved changes cleared.');
+                showStatusMessage(dom.backupStatus, 'File saved and unsaved changes cleared.');
                 console.log('%c[Save To File] Process Finished Successfully.', 'color: green; font-weight: bold;');
             } catch (error) {
                 console.error('[Save To File] An error occurred during the process:', error);
-                showBackupStatus('Error exporting data.', true);
+                showStatusMessage(dom.backupStatus, 'Error exporting data.', true);
             }
         });
     }
@@ -713,7 +694,7 @@ function setupSystemView() {
                 });
             } catch (error) {
                 console.error('Failed to import data:', error);
-                showBackupStatus(`Error: ${error.message}`, true, 5000);
+                showStatusMessage(dom.backupStatus, `Error: ${error.message}`, true, 5000);
             }
         });
     }
@@ -735,7 +716,7 @@ function setupSystemView() {
                 }
                 // If wasReset is false, the user cancelled the confirm dialog, so do nothing.
             } catch (error) {
-                showBackupStatus(`Error resetting data: ${error.message}`, true, 5000);
+                showStatusMessage(dom.backupStatus, `Error resetting data: ${error.message}`, true, 5000);
             }
         });
     }
@@ -927,7 +908,6 @@ function setupMachineView() {
 
     function setEditMode(isEditing) {
         allFormInputs.forEach(input => input.disabled = !isEditing);
-        dom.description.disabled = !isEditing; // Description is outside the form, handle explicitly
         dom.editBtn.hidden = isEditing;
         dom.saveBtn.hidden = !isEditing;
         dom.cancelBtn.hidden = !isEditing;
@@ -998,7 +978,7 @@ function setupMachineView() {
             setEditMode(false);
         } else {
             // No machine selected or found, hide the form
-            dom.form.classList.add('hidden');
+            if (dom.form) dom.form.classList.add('hidden');
             dom.deleteBtn.disabled = true;
         }
     }
@@ -1047,21 +1027,16 @@ function setupMachineView() {
         }
 
         const updatedMachineData = {};
+        // A robust way to gather data is to iterate the cached inputs
+        // and use their ID to map to a property name.
         allFormInputs.forEach(input => {
-            const key = Object.keys(dom).find(k => dom[k] === input);
-            if (key) {
-                let value = input.value;
-                // Ensure number types are stored as numbers for data consistency
-                if (input.type === 'number' && value.trim() !== '' && !isNaN(Number(value))) {
-                    value = Number(value);
-                }
-                updatedMachineData[key] = value;
+            const key = input.id.replace('machine-', ''); // e.g., 'machine-x-travel' -> 'xTravel'
+            let value = input.value;
+            if (input.type === 'number' && value.trim() !== '' && !isNaN(Number(value))) {
+                value = Number(value);
             }
+            updatedMachineData[key] = value;
         });
-
-        // Manually add the description to the data object, as it is
-        // not part of the main form's input collection.
-        updatedMachineData.description = dom.description.value.trim();
 
         try {
             // Save the updated data. Renaming is no longer supported via this form.

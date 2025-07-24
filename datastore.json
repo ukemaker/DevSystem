@@ -27,8 +27,7 @@
     "city": "BERKELEY",
     "state": "CA",
     "phone": "5108598532",
-    "activeProjectName": "Your Project",
-    "activeMachineName": "Milling Machine"
+    "activeProjectName": "Your Project"
   },
   "projects": {
     "Your Project": {
@@ -79,8 +78,8 @@
       "zTravel": 3,
       "positiveX": "right",
       "positiveY": "front",
-      "positiveZ": "up",
-      "fourthAxis": "x",
+      "positiveZ": "down",
+      "fourthAxis": "z",
       "positiveRotation": "rhr",
       "rotationZero": "pos-x",
       "description": "Rong Fu"
