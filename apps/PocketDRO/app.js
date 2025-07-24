@@ -797,12 +797,9 @@ function setupMachineView() {
         fourthAxis: document.getElementById('machine-fourth-axis'),
         positiveRotation: document.getElementById('machine-positive-rotation'),
         rotationZero: document.getElementById('machine-rotation-zero'),
-        minX: document.getElementById('machine-min-x'),
-        maxX: document.getElementById('machine-max-x'),
-        minY: document.getElementById('machine-min-y'),
-        maxY: document.getElementById('machine-max-y'),
-        minZ: document.getElementById('machine-min-z'),
-        maxZ: document.getElementById('machine-max-z'),
+        xTravel: document.getElementById('machine-x-travel'),
+        yTravel: document.getElementById('machine-y-travel'),
+        zTravel: document.getElementById('machine-z-travel'),
         status: document.getElementById('machine-status'),
     };
 
@@ -862,7 +859,10 @@ function setupMachineView() {
                 positiveZ: 'up',
                 fourthAxis: 'x',
                 positiveRotation: 'rhr',
-                rotationZero: 'pos-y'
+                rotationZero: 'pos-y',
+                xTravel: 200,
+                yTravel: 200,
+                zTravel: 50
             };
             const allKeys = Object.keys(dom).filter(k => k !== 'status');
             const loadPromises = allKeys.map(async (key) => {

@@ -23,6 +23,7 @@ input[type="text"],
 input[type="email"],
 input[type="tel"],
 input[type="date"],
+input[type="number"],
 input[type="file"],
 select,
 input[type="color"] {
@@ -259,6 +260,13 @@ nav#sidebar-nav {
     margin-bottom: 15px;
 }
 
+/* A simple container for vertically stacking form elements with consistent spacing */
+.form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .form-field {
     display: flex;
     flex-direction: column;
@@ -294,11 +302,8 @@ nav#sidebar-nav {
     align-items: center;
 }
 
-/* Constrain the width of the settings cards to half their container */
-.user-info-card,
-.project-card,
-.backup-card,
-.model-settings-card {
+/* Utility class to constrain the width of specific cards */
+.card-constrained {
     max-width: 50%;
 }
 
@@ -329,19 +334,12 @@ nav#sidebar-nav {
 }
 
 @media (max-width: 768px) {
-    .user-info-grid {
-        grid-template-columns: 1fr;
-    }
-
     .project-details-grid {
         grid-template-columns: 1fr;
     }
 
     /* On smaller screens, let the cards take the full width for readability */
-    .user-info-card,
-    .project-card,
-    .backup-card,
-    .model-settings-card {
+    .card-constrained {
         max-width: 100%;
     }
 }
