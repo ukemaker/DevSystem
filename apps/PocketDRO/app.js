@@ -1,5 +1,8 @@
 import { dataManager } from '../../shared/dm.js';
 import { styleManager } from '../../shared/sm.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // --- Main App Setup ---
 const contentArea = document.getElementById('content-area');
@@ -765,6 +768,170 @@ function setupSystemView() {
     };
 }
 
+/**
+ * Manages the three.js visualization for the machine settings.
+ */
+class MachineVisualizer {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.renderer = null;
+        this.labelRenderer = null;
+        this.scene = null;
+        this.camera = null;
+        this.controls = null;
+        this.animationFrameId = null;
+        this.sceneObjects = new THREE.Group(); // Group to hold all dynamic objects
+    }
+
+    init() {
+        // Scene
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0xffffff);
+        this.scene.add(this.sceneObjects);
+
+        // Camera
+        const fov = 45;
+        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+        const near = 0.1;
+        const far = 1000;
+        this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+        this.camera.position.set(15, 15, 20);
+
+        // Renderer
+        this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+        this.renderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+
+        // Label Renderer
+        this.labelRenderer = new CSS2DRenderer();
+        this.labelRenderer.setSize(this.canvas.clientWidth, this.canvas.clientHeight);
+        this.labelRenderer.domElement.style.position = 'absolute';
+        this.labelRenderer.domElement.style.top = '0px';
+        this.labelRenderer.domElement.style.pointerEvents = 'none'; // Allow clicks to pass through
+        this.canvas.parentNode.appendChild(this.labelRenderer.domElement);
+
+        // Controls
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        this.scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        this.scene.add(directionalLight);
+
+        // Start animation loop
+        this.animate();
+    }
+
+    update(machineData) {
+        // Clear previous objects
+        while (this.sceneObjects.children.length) {
+            this.sceneObjects.remove(this.sceneObjects.children[0]);
+        }
+
+        const { xTravel = 1, yTravel = 1, zTravel = 1 } = machineData;
+
+        // 1. Draw Travel Envelope
+        const envelopeGeom = new THREE.BoxGeometry(xTravel, yTravel, zTravel);
+        const envelopeMaterial = new THREE.MeshBasicMaterial({ color: 0x007bff, transparent: true, opacity: 0.1 });
+        const envelope = new THREE.Mesh(envelopeGeom, envelopeMaterial);
+        const boxHelper = new THREE.BoxHelper(envelope, 0x007bff);
+        this.sceneObjects.add(boxHelper);
+
+        // 2. Draw Axes
+        const axisLength = Math.max(xTravel, yTravel, zTravel) * 0.75;
+        this.addAxis('X', new THREE.Vector3(machineData.positiveX === 'right' ? 1 : -1, 0, 0), axisLength, 0xff0000);
+        this.addAxis('Y', new THREE.Vector3(0, machineData.positiveY === 'front' ? 1 : -1, 0), axisLength, 0x00ff00);
+        this.addAxis('Z', new THREE.Vector3(0, 0, machineData.positiveZ === 'up' ? 1 : -1), axisLength, 0x0000ff);
+
+        // 3. Draw Rotation Indicator
+        this.addRotationIndicator(machineData, axisLength * 0.5);
+    }
+
+    addAxis(label, dir, length, color) {
+        const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), length, color, length * 0.1, length * 0.05);
+        this.sceneObjects.add(arrow);
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'axis-label';
+        labelDiv.textContent = label;
+        labelDiv.style.color = `#${color.toString(16).padStart(6, '0')}`;
+        labelDiv.style.fontWeight = 'bold';
+        labelDiv.style.fontSize = '16px';
+
+        const axisLabel = new CSS2DObject(labelDiv);
+        axisLabel.position.copy(dir).multiplyScalar(length * 1.1);
+        this.sceneObjects.add(axisLabel);
+    }
+
+    addRotationIndicator(data, radius) {
+        const axisMap = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+        const zeroMap = {
+            'pos-x': new THREE.Vector3(1, 0, 0), 'neg-x': new THREE.Vector3(-1, 0, 0),
+            'pos-y': new THREE.Vector3(0, 1, 0), 'neg-y': new THREE.Vector3(0, -1, 0),
+            'pos-z': new THREE.Vector3(0, 0, 1), 'neg-z': new THREE.Vector3(0, 0, -1),
+        };
+
+        const rotationAxis = axisMap[data.fourthAxis];
+        if (!rotationAxis) return;
+
+        // Create the circular path (torus)
+        const tubeRadius = radius * 0.03;
+        const torusGeom = new THREE.TorusGeometry(radius, tubeRadius, 16, 100);
+        const torusMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+        const torus = new THREE.Mesh(torusGeom, torusMat);
+
+        // Align the torus to be perpendicular to the rotation axis
+        const upVector = new THREE.Vector3(0, 0, 1); // Default orientation of torus
+        torus.quaternion.setFromUnitVectors(upVector, rotationAxis);
+        this.sceneObjects.add(torus);
+
+        // Create the arrow
+        const zeroVector = zeroMap[data.rotationZero];
+        if (!zeroVector) return;
+
+        // Check if zeroVector is parallel to rotationAxis. If so, can't draw arrow.
+        if (Math.abs(zeroVector.dot(rotationAxis)) > 0.99) return;
+
+        const arrowOrigin = zeroVector.clone().multiplyScalar(radius);
+
+        // Determine arrow direction using cross product (Right-Hand Rule)
+        let arrowDirection = new THREE.Vector3().crossVectors(rotationAxis, zeroVector).normalize();
+        if (data.positiveRotation === 'lhr') {
+            arrowDirection.negate(); // Reverse for Left-Hand Rule
+        }
+
+        const arrowLength = radius * 0.4;
+        const arrow = new THREE.ArrowHelper(arrowDirection, arrowOrigin, arrowLength, 0xdc3545, arrowLength * 0.4, arrowLength * 0.2);
+        this.sceneObjects.add(arrow);
+    }
+
+    dispose() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+        if (this.controls) {
+            this.controls.dispose();
+        }
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
+        if (this.labelRenderer && this.labelRenderer.domElement.parentNode) {
+            this.labelRenderer.domElement.parentNode.removeChild(this.labelRenderer.domElement);
+        }
+        // You can add more cleanup for geometries and materials if needed
+    }
+
+    animate() {
+        this.animationFrameId = requestAnimationFrame(() => this.animate());
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+        this.labelRenderer.render(this.scene, this.camera);
+    }
+}
+
 // --- Machine Settings View ---
 // --- Machine Settings View ---
 function setupMachineView() {
@@ -803,6 +970,7 @@ function setupMachineView() {
         addForm: document.getElementById('add-machine-form'),
         modalCloseBtn: document.getElementById('machine-modal-close-btn'),
         modalCancelBtn: document.getElementById('machine-modal-cancel-btn'),
+        canvas: document.getElementById('machine-visualization-canvas'),
     };
 
     // --- State Variables ---
@@ -815,6 +983,7 @@ function setupMachineView() {
     let activeMachineName = null;
     let originalMachineData = {};
     let previousLinearUnit = null; // Add this to track unit changes during an edit session.
+    let visualizer = null;
 
     // --- Formatting and Conversion Utilities (Agnostic) ---
 
@@ -909,6 +1078,21 @@ function setupMachineView() {
         });
     }
 
+    /**
+     * Reads the current values from the form to create a machine data object.
+     * Used for live updates of the visualization.
+     */
+    function getMachineDataFromForm() {
+        const data = {};
+        allFormInputs.forEach(input => {
+            const key = input.id.replace('machine-', '');
+            let value = input.value;
+            if (input.type === 'number') value = Number(value) || 0;
+            data[key] = value;
+        });
+        return data;
+    }
+
     function setEditMode(isEditing) {
         allFormInputs.forEach(input => input.disabled = !isEditing);
         dom.editBtn.hidden = isEditing;
@@ -979,6 +1163,9 @@ function setupMachineView() {
             dom.form.classList.remove('hidden');
             dom.deleteBtn.disabled = false;
             setEditMode(false);
+            if (visualizer) {
+                visualizer.update(machine);
+            }
         } else {
             // No machine selected or found, hide the form
             if (dom.form) dom.form.classList.add('hidden');
@@ -1153,6 +1340,14 @@ function setupMachineView() {
     });
     dom.inputUnits.addEventListener('change', handleUnitChange);
     dom.precision.addEventListener('change', handlePrecisionChange);
+    // Add listeners for live visualization updates
+    allFormInputs.forEach(input => {
+        input.addEventListener('change', () => {
+            if (dom.editBtn.hidden && visualizer) { // In edit mode
+                visualizer.update(getMachineDataFromForm());
+            }
+        });
+    });
 
     // Modal Listeners
     dom.addBtn.addEventListener('click', openAddModal);
@@ -1161,10 +1356,17 @@ function setupMachineView() {
     dom.addForm.addEventListener('submit', handleAddSave);
 
     // Initial load
+    if (dom.canvas) {
+        visualizer = new MachineVisualizer(dom.canvas);
+        visualizer.init();
+    }
     loadAllMachineData();
     console.log(`[setupMachineView] END.`);
 
     return () => {
+        if (visualizer) {
+            visualizer.dispose();
+        }
         // Teardown guard
         if (dom.editBtn.hidden) { // We are in edit mode
             return confirm('You have unsaved changes. Are you sure you want to leave?');
