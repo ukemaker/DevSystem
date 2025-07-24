@@ -95,42 +95,19 @@ async function handleBackupAndReset() {
  * Handles the global IMPORT process by reading a file, loading it via the dataManager,
  * and then reloading the current view to reflect the changes.
  * @param {Event} event - The file input change event.
- * @param {string} viewToReload - The name of the view to reload after import.
  */
-async function handleGlobalImport(event, viewToReload) {
+async function handleGlobalImport(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     // Get a reference to the input element to clear it later.
     const fileInput = event.target;
 
-    try {
-        await dataManager.loadDataFromJson(file);
-        globalState.isDirty = false; // After a successful load, the data is in sync
+    await dataManager.loadDataFromJson(file);
+    globalState.isDirty = false; // After a successful load, the data is in sync
 
-        if (fileInput) {
-            fileInput.value = '';
-        }
-
-        // Reload the current view to reflect the new data from the imported file.
-        currentView = null; // Force a reload by clearing the current view state
-        
-        // Create a callback to show the success message AFTER the view has reloaded.
-        const showSuccessMessage = () => {
-            const statusEl = document.getElementById('file-actions-status');
-            if (statusEl) {
-                statusEl.textContent = 'Data loaded successfully!';
-                statusEl.classList.remove('hidden');
-                statusEl.style.color = 'green';
-                setTimeout(() => { statusEl.classList.add('hidden'); }, 3000);
-            }
-        };
-
-        await loadView(viewToReload, showSuccessMessage);
-
-    } catch (error) {
-        // Re-throw the error to be caught by the calling event listener
-        throw error;
+    if (fileInput) {
+        fileInput.value = '';
     }
 }
 
@@ -138,6 +115,7 @@ async function handleGlobalImport(event, viewToReload) {
 const viewInitializers = {
     'program': setupProgramView,
     'system': setupSystemView,
+    'model': setupModelView,
 };
 
 async function loadView(viewName, onLoadCallback = null) {
@@ -205,6 +183,62 @@ async function loadView(viewName, onLoadCallback = null) {
     console.log(`[loadView] END. Finished loading '${viewName}'. Current view is: '${currentView}'.`);
 }
 
+/**
+ * Resets all user-modifiable data modules to their default states as defined in datastore.json.
+ * This function reads the `default-*` modules and overwrites the corresponding active modules.
+ * @returns {Promise<boolean>} A promise that resolves to `true` if the reset was successful, 
+ * `false` if the user cancelled, and rejects on error.
+ */
+async function handleResetToDefaults() {
+    if (!confirm("Are you sure you want to reset all settings to their defaults? This will overwrite your current data and cannot be undone.")) {
+        return false; // User cancelled the operation
+    }
+
+    try {
+        const allData = await dataManager.getAllItems();
+        // Start with a clean slate to ensure non-default data is removed.
+        const newData = {};
+
+        // Preserve the schema, if it exists.
+        if (allData._schema) {
+            newData._schema = JSON.parse(JSON.stringify(allData._schema));
+        }
+
+        const modulesToReset = ['system', 'projects', 'model'];
+        let didReset = false;
+
+        // Rebuild the data store using only the default modules.
+        for (const moduleName of modulesToReset) {
+            const defaultKey = `default-${moduleName}`;
+            if (allData[defaultKey]) {
+                // Copy the default data to the active module key (e.g., 'system').
+                newData[moduleName] = JSON.parse(JSON.stringify(allData[defaultKey]));
+                // Also copy the default module itself (e.g., 'default-system') to the new store.
+                newData[defaultKey] = JSON.parse(JSON.stringify(allData[defaultKey]));
+                didReset = true;
+            } else {
+                console.warn(`Default data for module '${moduleName}' not found. Skipping reset.`);
+            }
+        }
+
+        if (!didReset) {
+            throw new Error("No default data found to perform a reset.");
+        }
+
+        // Create a blob and file from the new data object to use the existing import logic.
+        // This will overwrite the entire localStorage with our newly constructed data.
+        const blob = new Blob([JSON.stringify(newData)], { type: 'application/json' });
+        const file = new File([blob], 'reset-data.json', { type: 'application/json' });
+        
+        await dataManager.loadDataFromJson(file);
+        globalState.isDirty = true; // The store has changed and is now out of sync with any saved file.
+        updateGlobalDirtyStatusUI();
+        return true; // Indicate success
+    } catch (error) {
+        console.error('Failed to reset data to defaults:', error);
+        throw error; // Re-throw to be caught by the caller
+    }
+}
 // --- System Settings View ---
 function setupSystemView() {
     console.log(`[setupSystemView] START. currentView is: '${currentView}'.`);
@@ -217,8 +251,9 @@ function setupSystemView() {
         status: document.getElementById('user-info-status'),
 
         // Backup and Restore elements
-        backupSystemBtn: document.getElementById('backup-system-btn'),
-        restoreSystemInput: document.getElementById('restore-system-input'),
+        backupDataBtn: document.getElementById('backup-data-btn'),
+        restoreDataInput: document.getElementById('restore-data-input'),
+        resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
         backupStatus: document.getElementById('backup-status'),
 
         // Project section elements
@@ -627,8 +662,8 @@ function setupSystemView() {
     });
 
     // User Data File Listeners
-    if (dom.backupSystemBtn) {
-        dom.backupSystemBtn.addEventListener('click', async (event) => {
+    if (dom.backupDataBtn) {
+        dom.backupDataBtn.addEventListener('click', async (event) => {
             console.log(`%c[Save To File] Process Started. currentView is: '${currentView}'.`, 'color: blue; font-weight: bold;');
             event.preventDefault(); // Prevent any default browser action
             event.stopPropagation(); // Stop the event from bubbling up
@@ -660,13 +695,47 @@ function setupSystemView() {
             }
         });
     }
-    if (dom.restoreSystemInput) {
-        dom.restoreSystemInput.addEventListener('change', async (event) => {
+    if (dom.restoreDataInput) {
+        dom.restoreDataInput.addEventListener('change', async (event) => {
+            if (!event.target.files || event.target.files.length === 0) return;
             try {
-                await handleGlobalImport(event, 'system');
+                await handleGlobalImport(event);
+                currentView = null; // Force reload
+                await loadView('system', () => {
+                    // This callback runs after the new view is loaded
+                    const statusEl = document.getElementById('backup-status');
+                    if (statusEl) {
+                        statusEl.textContent = 'Data restored successfully.';
+                        statusEl.classList.remove('hidden');
+                        statusEl.style.color = 'green';
+                        setTimeout(() => { statusEl.classList.add('hidden'); }, 3000);
+                    }
+                });
             } catch (error) {
                 console.error('Failed to import data:', error);
                 showBackupStatus(`Error: ${error.message}`, true, 5000);
+            }
+        });
+    }
+    if (dom.resetDefaultsBtn) {
+        dom.resetDefaultsBtn.addEventListener('click', async () => {
+            try {
+                const wasReset = await handleResetToDefaults();
+                if (wasReset) {
+                    currentView = null; // Force reload
+                    await loadView('system', () => {
+                        const statusEl = document.getElementById('backup-status');
+                        if (statusEl) {
+                            statusEl.textContent = 'Data has been reset to defaults.';
+                            statusEl.classList.remove('hidden');
+                            statusEl.style.color = 'green';
+                            setTimeout(() => { statusEl.classList.add('hidden'); }, 3000);
+                        }
+                    });
+                }
+                // If wasReset is false, the user cancelled the confirm dialog, so do nothing.
+            } catch (error) {
+                showBackupStatus(`Error resetting data: ${error.message}`, true, 5000);
             }
         });
     }
@@ -713,6 +782,99 @@ function setupSystemView() {
         // We don't need a guard for project changes because they save immediately or have their own cancel flow.
         return true; // OK to navigate away
     };
+}
+
+// --- Model Settings View ---
+function setupModelView() {
+    console.log(`[setupModelView] START. currentView is: '${currentView}'.`);
+    const dom = {
+        inputUnits: document.getElementById('model-input-units'),
+        outputUnits: document.getElementById('model-output-units'),
+        angleUnits: document.getElementById('model-angle-units'),
+        zeroReference: document.getElementById('model-zero-reference'),
+        positiveX: document.getElementById('model-positive-x'),
+        positiveY: document.getElementById('model-positive-y'),
+        positiveZ: document.getElementById('model-positive-z'),
+        minX: document.getElementById('model-min-x'),
+        maxX: document.getElementById('model-max-x'),
+        minY: document.getElementById('model-min-y'),
+        maxY: document.getElementById('model-max-y'),
+        minZ: document.getElementById('model-min-z'),
+        maxZ: document.getElementById('model-max-z'),
+        status: document.getElementById('model-status'),
+    };
+
+    const allInputs = Object.values(dom).filter(el => el && el.id !== 'model-status');
+    const moduleName = 'model';
+
+    function showStatus(message, isError = false, duration = 2000) {
+        if (!dom.status) return;
+        dom.status.textContent = message;
+        dom.status.classList.remove('hidden');
+        dom.status.style.color = isError ? 'var(--danger-color)' : 'green';
+        setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
+    }
+
+    async function loadModelData() {
+        try {
+            const defaultValues = {
+                inputUnits: 'inch',
+                outputUnits: 'inch',
+                angleUnits: 'degrees',
+                zeroReference: 'center',
+                positiveX: 'right',
+                positiveY: 'front',
+                positiveZ: 'up'
+            };
+            const allKeys = Object.keys(dom).filter(k => k !== 'status');
+            const loadPromises = allKeys.map(async (key) => {
+                const element = dom[key];
+                if (element) {
+                    const defaultValue = defaultValues[key] || '';
+                    const storedValue = await dataManager.getItem(moduleName, key);
+                    // Use default value only if stored value is null/undefined
+                    element.value = storedValue ?? defaultValue;
+                }
+            });
+            await Promise.all(loadPromises);
+        } catch (error) {
+            console.error('Failed to load model settings:', error);
+            showStatus('Error loading settings.', true);
+        }
+    }
+
+    async function handleInputChange(event) {
+        const element = event.target;
+        // Find the key in our dom object that corresponds to this element
+        const key = Object.keys(dom).find(k => dom[k] === element);
+        const value = element.value;
+
+        if (key) {
+            try {
+                await dataManager.setItem(moduleName, key, value);
+                globalState.isDirty = true;
+                updateGlobalDirtyStatusUI();
+                showStatus('Setting saved.');
+            } catch (error) {
+                console.error(`Failed to save model setting for ${key}:`, error);
+                showStatus(`Error saving ${key}`, true);
+            }
+        }
+    }
+
+    // Attach listeners
+    allInputs.forEach(input => {
+        if (input) {
+            input.addEventListener('change', handleInputChange);
+        }
+    });
+
+    // Initial load
+    loadModelData();
+    console.log(`[setupModelView] END. currentView is: '${currentView}'.`);
+
+    // No teardown needed as changes are saved immediately on change.
+    return null;
 }
 
 // --- Program Settings View ---
@@ -934,9 +1096,14 @@ function setupDataManagement() {
         if (dom.importFileInput) {
             dom.importFileInput.addEventListener('change', async (event) => {
                 try {
-                    await handleGlobalImport(event, 'program');
+                    await handleGlobalImport(event);
+                    currentView = null; // Force reload
+                    await loadView('program', () => {
+                        // The program view uses a simple alert for this confirmation
+                        alert('Data imported successfully.');
+                    });
                 } catch (error) {
-                    console.error('Failed to import data from Program view:', error);
+                    console.error('Failed to import data from Program view:', error); // Keep console log
                     alert(`Error importing data: ${error.message}`);
                 }
             });

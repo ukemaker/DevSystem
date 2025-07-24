@@ -1,4 +1,102 @@
-<h1>Model Settings</h1>
+<div class="view-container">
+    <h1>Model Settings</h1>
 
-<p>Module content will be developed here.</p>
+    <div class="card model-settings-card">
+        <div class="card-header">
+            <h2>Units (Default)</h2>
+        </div>
+        <div class="form-row">
+            <div class="form-field">
+                <label for="model-input-units">Input</label>
+                <select id="model-input-units">
+                    <option value="inch">Inch</option>
+                    <option value="metric">Metric</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="model-output-units">Output</label>
+                <select id="model-output-units">
+                    <option value="inch">Inch</option>
+                    <option value="metric">Metric</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="model-angle-units">Angle</label>
+                <select id="model-angle-units">
+                    <option value="degrees">Degrees</option>
+                    <option value="radians">Radians</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
+    <div class="card model-settings-card">
+        <div class="card-header">
+            <h2>Reference Coordinate System</h2>
+        </div>
+        <div class="user-info-grid"> <!-- Reusing grid class from system.html for consistency -->
+            <div class="form-field full-width">
+                <label for="model-zero-reference">Zero Reference</label>
+                <select id="model-zero-reference">
+                    <option value="center">Center</option>
+                    <option value="top-left">Top-Left</option>
+                    <option value="middle-left">Middle-Left</option>
+                    <option value="bottom-left">Bottom-Left</option>
+                    <option value="top-right">Top-Right</option>
+                    <option value="middle-right">Middle-Right</option>
+                    <option value="bottom-right">Bottom-Right</option>
+                    <option value="top-middle">Top-Middle</option>
+                    <option value="bottom-middle">Bottom-Middle</option>
+                </select>
+            </div>
+            <div class="form-row full-width">
+                <div class="form-field">
+                    <label for="model-positive-x">Positive-X</label>
+                    <select id="model-positive-x">
+                        <option value="right">Right Side of Table</option>
+                        <option value="left">Left Side of Table</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="model-positive-y">Positive-Y</label>
+                    <select id="model-positive-y">
+                        <option value="front">Front of Table</option>
+                        <option value="back">Back of Table</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="model-positive-z">Positive-Z</label>
+                    <select id="model-positive-z">
+                        <option value="up">Spindle Moves Up</option>
+                        <option value="down">Spindle Moves Down</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="model-min-x">Min X</label>
+                <input type="number" id="model-min-x" placeholder="e.g., -100.0">
+            </div>
+            <div class="form-field">
+                <label for="model-max-x">Max X</label>
+                <input type="number" id="model-max-x" placeholder="e.g., 100.0">
+            </div>
+            <div class="form-field">
+                <label for="model-min-y">Min Y</label>
+                <input type="number" id="model-min-y" placeholder="e.g., -100.0">
+            </div>
+            <div class="form-field">
+                <label for="model-max-y">Max Y</label>
+                <input type="number" id="model-max-y" placeholder="e.g., 100.0">
+            </div>
+            <div class="form-field">
+                <label for="model-min-z">Min Z</label>
+                <input type="number" id="model-min-z" placeholder="e.g., -50.0">
+            </div>
+            <div class="form-field">
+                <label for="model-max-z">Max Z</label>
+                <input type="number" id="model-max-z" placeholder="e.g., 0.0">
+            </div>
+        </div>
+        <p id="model-status" role="status" aria-live="polite" class="hidden" style="margin-top: 15px; text-align: right;"></p>
+    </div>
+</div>

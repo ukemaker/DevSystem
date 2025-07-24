@@ -264,7 +264,8 @@ nav#sidebar-nav {
     flex-direction: column;
 }
 
-.form-field.full-width {
+.form-field.full-width,
+.form-row.full-width {
     grid-column: 1 / -1; /* Span across all columns */
 }
 
@@ -296,7 +297,8 @@ nav#sidebar-nav {
 /* Constrain the width of the settings cards to half their container */
 .user-info-card,
 .project-card,
-.backup-card {
+.backup-card,
+.model-settings-card {
     max-width: 50%;
 }
 
@@ -321,7 +323,8 @@ nav#sidebar-nav {
 }
 
 /* Status message for forms like the user-info form */
-#user-info-status {
+#user-info-status,
+#backup-status {
     margin-top: 10px;
 }
 
@@ -337,7 +340,8 @@ nav#sidebar-nav {
     /* On smaller screens, let the cards take the full width for readability */
     .user-info-card,
     .project-card,
-    .backup-card {
+    .backup-card,
+    .model-settings-card {
         max-width: 100%;
     }
 }

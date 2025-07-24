@@ -15,19 +15,56 @@
     "city": "BERKELEY",
     "state": "CA",
     "phone": "5108598532",
-    "activeProjectName": "PocketDRO"
+    "activeProjectName": "Your Project"
+  },
+  "default-system": {
+    "name": "Michael DaSilva",
+    "email": "ukemkr@gmail.com",
+    "company": "DaSilva Ukulele Co.",
+    "title": "Engineer",
+    "street": "2547 8th St. STE 28",
+    "city": "BERKELEY",
+    "state": "CA",
+    "phone": "5108598532",
+    "activeProjectName": "Your Project"
   },
   "projects": {
-    "PocketDRO": {
-      "description": "Description text asdsdfsaf",
+    "Your Project": {
+      "description": "A sample project for the PocketDRO application.",
       "status": "In Progress",
-      "startDate": "2025-07-05",
-      "endDate": "2025-07-17"
-    },
-    "Development System": {
-      "startDate": "2025-07-25",
-      "endDate": "2025-07-08",
-      "status": "On Hold"
+      "startDate": "2024-01-01",
+      "endDate": ""
     }
+  },
+  "default-projects": {
+    "Your Project": {
+      "description": "A sample project for the PocketDRO application.",
+      "status": "In Progress",
+      "startDate": "2024-01-01",
+      "endDate": ""
+    }
+  },
+  "model": {
+    "inputUnits": "inch",
+    "outputUnits": "inch",
+    "angleUnits": "degrees",
+    "minX": "-100",
+    "maxX": "100",
+    "minY": "-100",
+    "maxY": "100",
+    "minZ": "-50",
+    "maxZ": "0",
+    "positiveZ": "down"
+  },
+  "default-model": {
+    "inputUnits": "inch",
+    "outputUnits": "inch",
+    "angleUnits": "degrees",
+    "minX": "-100",
+    "maxX": "100",
+    "minY": "-100",
+    "maxY": "100",
+    "minZ": "-50",
+    "maxZ": "0"
   }
 }
