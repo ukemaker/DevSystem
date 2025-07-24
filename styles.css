@@ -117,7 +117,12 @@ main#content-area {
     max-width: 1400px;
     margin: 0 auto;
 }
-main#content-area h1,
+main#content-area h1 {
+    margin-top: 0;
+    margin-bottom: 5px; /* Tighter spacing below main view title */
+    padding-bottom: 0;
+    border-bottom: none; /* Remove the faint separator line */
+}
 main#content-area h2 {
     border-bottom: 1px solid var(--border-color-light);
     padding-bottom: 10px;
@@ -219,8 +224,8 @@ nav#sidebar-nav {
     background-color: #fff;
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 10px;
+    margin-bottom: 10px;
 }
 .form-group {
     display: flex;
@@ -266,7 +271,7 @@ nav#sidebar-nav {
 .user-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px; /* Reduced spacing */
+    gap: 8px; /* Reduced spacing */
     margin-bottom: 15px;
 }
 
@@ -274,7 +279,7 @@ nav#sidebar-nav {
 .form-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
 }
 
 .form-field {
@@ -289,7 +294,7 @@ nav#sidebar-nav {
 
 .form-row {
     display: flex;
-    gap: 12px; /* Match the grid gap */
+    gap: 8px; /* Match the grid gap */
     align-items: flex-start;
 }
 
@@ -320,7 +325,7 @@ nav#sidebar-nav {
 .project-details-grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 8px;
     margin-top: 15px; /* Space from project selector */
     margin-bottom: 15px; /* Space before action buttons */
 }
@@ -339,7 +344,8 @@ nav#sidebar-nav {
 
 /* Status message for forms like the user-info form */
 #user-info-status,
-#backup-status {
+#backup-status,
+#machine-status {
     margin-top: 10px;
 }
 

@@ -6,9 +6,13 @@
         <div class="card-header">
             <h2>Active Machine</h2>
         </div>
-        <div class="form-field">
+        <div class="form-field" style="margin-bottom: 15px;">
             <label for="machine-selector">Select Machine</label>
             <select id="machine-selector"></select>
+        </div>
+        <div class="form-field" style="margin-bottom: 15px;">
+            <label for="machine-description">Description</label>
+            <textarea id="machine-description" rows="1" placeholder="A brief description of the machine..." disabled></textarea>
         </div>
         <div class="form-actions">
             <button type="button" id="add-machine-btn" class="btn-primary">Add New Machine</button>
@@ -17,7 +21,7 @@
     </div>
 
     <!-- Machine Details Form -->
-    <form id="machine-details-form" class="hidden">
+    <form id="machine-details-form" class="hidden" style="margin-bottom: 10px;">
         <div class="card card-constrained">
             <div class="card-header">
                 <h2>Units</h2>
@@ -48,11 +52,7 @@
             <div class="card-header">
                 <h2>Reference Coordinate System</h2>
             </div>
-            <div class="form-field" style="padding: 0 1rem;">
-                <label for="machine-description">Description</label>
-                <textarea id="machine-description" rows="3" placeholder="A brief description of the machine..." disabled></textarea>
-            </div>
-            <div class="form-stack">
+            <div class="form-stack" style="margin-bottom: 15px;">
                 <div class="form-row">
                     <div class="form-field">
                         <label for="machine-positive-x">Positive-X</label>
@@ -119,14 +119,14 @@
                     </div>
                 </div>
             </div>
-            <p id="machine-status" role="status" aria-live="polite" class="hidden" style="margin-top: 15px; text-align: right;"></p>
             <div class="form-actions">
                 <div class="button-group">
-                    <button type="button" id="edit-machine-btn">Edit</button>
-                    <button type="submit" id="save-machine-btn" disabled hidden>Save Machine</button>
+                    <button type="button" id="edit-machine-btn" class="btn-primary">Edit</button>
+                    <button type="submit" id="save-machine-btn" class="btn-primary" disabled hidden>Save Machine</button>
                     <button type="button" id="cancel-machine-edit-btn" disabled hidden>Cancel</button>
                 </div>
             </div>
+            <p id="machine-status" role="status" aria-live="polite" class="hidden"></p>
         </div>
     </form>
 

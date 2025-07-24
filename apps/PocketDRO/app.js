@@ -806,7 +806,10 @@ function setupMachineView() {
     };
 
     // --- State Variables ---
-    const allFormInputs = Array.from(dom.form.querySelectorAll('input, select, textarea'));
+    const allFormInputs = [
+        ...dom.form.querySelectorAll('input, select, textarea'),
+        dom.description,
+    ];
 
     let allMachines = {};
     let activeMachineName = null;
@@ -980,6 +983,10 @@ function setupMachineView() {
             // No machine selected or found, hide the form
             if (dom.form) dom.form.classList.add('hidden');
             dom.deleteBtn.disabled = true;
+            if (dom.description) {
+                dom.description.value = '';
+                dom.description.disabled = true;
+            }
         }
     }
 
