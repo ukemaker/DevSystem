@@ -36,7 +36,7 @@
         </div>
         <div class="user-info-grid"> <!-- Reusing grid class from system.html for consistency -->
             <div class="form-field full-width">
-                <label for="model-zero-reference">Zero Reference</label>
+                <label for="model-zero-reference">Zero X-Y</label>
                 <select id="model-zero-reference">
                     <option value="center">Center</option>
                     <option value="top-left">Top-Left</option>
@@ -69,6 +69,34 @@
                     <select id="model-positive-z">
                         <option value="up">Spindle Moves Up</option>
                         <option value="down">Spindle Moves Down</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row full-width" style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 15px;">
+                <div class="form-field">
+                    <label for="model-fourth-axis">4th Axis Around</label>
+                    <select id="model-fourth-axis">
+                        <option value="x">X-Axis</option>
+                        <option value="y">Y-Axis</option>
+                        <option value="z">Z-Axis</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="model-positive-rotation">Positive Rotation</label>
+                    <select id="model-positive-rotation">
+                        <option value="rhr">Right Hand Rule</option>
+                        <option value="lhr">Left Hand Rule</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="model-rotation-zero">Rotation Zero</label>
+                    <select id="model-rotation-zero">
+                        <option value="pos-x">+X Direction</option>
+                        <option value="neg-x">-X Direction</option>
+                        <option value="pos-y">+Y Direction</option>
+                        <option value="neg-y">-Y Direction</option>
+                        <option value="pos-z">+Z Direction</option>
+                        <option value="neg-z">-Z Direction</option>
                     </select>
                 </div>
             </div>

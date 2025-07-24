@@ -1,4 +1,130 @@
-<h1>Machine Settings</h1>
+<div class="view-container">
+    <h1>Machine Settings</h1>
 
-<p>Module content will be developed here.</p>
+    <div class="card model-settings-card">
+        <div class="card-header">
+            <h2>Units (Default)</h2>
+        </div>
+        <div class="form-row">
+            <div class="form-field">
+                <label for="machine-input-units">Input</label>
+                <select id="machine-input-units">
+                    <option value="inch">Inch</option>
+                    <option value="metric">Metric</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="machine-output-units">Output</label>
+                <select id="machine-output-units">
+                    <option value="inch">Inch</option>
+                    <option value="metric">Metric</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="machine-angle-units">Angle</label>
+                <select id="machine-angle-units">
+                    <option value="degrees">Degrees</option>
+                    <option value="radians">Radians</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
+    <div class="card model-settings-card">
+        <div class="card-header">
+            <h2>Reference Coordinate System</h2>
+        </div>
+        <div class="user-info-grid"> <!-- Reusing grid class from system.html for consistency -->
+            <div class="form-field full-width">
+                <label for="machine-zero-reference">Zero X-Y</label>
+                <select id="machine-zero-reference">
+                    <option value="center">Center</option>
+                    <option value="top-left">Top-Left</option>
+                    <option value="middle-left">Middle-Left</option>
+                    <option value="bottom-left">Bottom-Left</option>
+                    <option value="top-right">Top-Right</option>
+                    <option value="middle-right">Middle-Right</option>
+                    <option value="bottom-right">Bottom-Right</option>
+                    <option value="top-middle">Top-Middle</option>
+                    <option value="bottom-middle">Bottom-Middle</option>
+                </select>
+            </div>
+            <div class="form-row full-width">
+                <div class="form-field">
+                    <label for="machine-positive-x">Positive-X</label>
+                    <select id="machine-positive-x">
+                        <option value="right">Right Side of Table</option>
+                        <option value="left">Left Side of Table</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="machine-positive-y">Positive-Y</label>
+                    <select id="machine-positive-y">
+                        <option value="front">Front of Table</option>
+                        <option value="back">Back of Table</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="machine-positive-z">Positive-Z</label>
+                    <select id="machine-positive-z">
+                        <option value="up">Spindle Moves Up</option>
+                        <option value="down">Spindle Moves Down</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row full-width" style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 15px;">
+                <div class="form-field">
+                    <label for="machine-fourth-axis">4th Axis Around</label>
+                    <select id="machine-fourth-axis">
+                        <option value="x">X-Axis</option>
+                        <option value="y">Y-Axis</option>
+                        <option value="z">Z-Axis</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="machine-positive-rotation">Positive Rotation</label>
+                    <select id="machine-positive-rotation">
+                        <option value="rhr">Right Hand Rule</option>
+                        <option value="lhr">Left Hand Rule</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="machine-rotation-zero">Rotation Zero</label>
+                    <select id="machine-rotation-zero">
+                        <option value="pos-x">+X Direction</option>
+                        <option value="neg-x">-X Direction</option>
+                        <option value="pos-y">+Y Direction</option>
+                        <option value="neg-y">-Y Direction</option>
+                        <option value="pos-z">+Z Direction</option>
+                        <option value="neg-z">-Z Direction</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="machine-min-x">Min X</label>
+                <input type="number" id="machine-min-x" placeholder="e.g., -100.0">
+            </div>
+            <div class="form-field">
+                <label for="machine-max-x">Max X</label>
+                <input type="number" id="machine-max-x" placeholder="e.g., 100.0">
+            </div>
+            <div class="form-field">
+                <label for="machine-min-y">Min Y</label>
+                <input type="number" id="machine-min-y" placeholder="e.g., -100.0">
+            </div>
+            <div class="form-field">
+                <label for="machine-max-y">Max Y</label>
+                <input type="number" id="machine-max-y" placeholder="e.g., 100.0">
+            </div>
+            <div class="form-field">
+                <label for="machine-min-z">Min Z</label>
+                <input type="number" id="machine-min-z" placeholder="e.g., -50.0">
+            </div>
+            <div class="form-field">
+                <label for="machine-max-z">Max Z</label>
+                <input type="number" id="machine-max-z" placeholder="e.g., 0.0">
+            </div>
+        </div>
+        <p id="machine-status" role="status" aria-live="polite" class="hidden" style="margin-top: 15px; text-align: right;"></p>
+    </div>
+</div>

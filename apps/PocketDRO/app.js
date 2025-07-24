@@ -10,7 +10,6 @@ const navButtons = {
     'calc-conv': document.getElementById('nav-calc-conv'),
     // Settings Submenu
     'system': document.getElementById('nav-system'),
-    'model': document.getElementById('nav-model'),
     'machine': document.getElementById('nav-machine'),
     'display': document.getElementById('nav-display'),
     'print': document.getElementById('nav-print'),
@@ -115,7 +114,7 @@ async function handleGlobalImport(event) {
 const viewInitializers = {
     'program': setupProgramView,
     'system': setupSystemView,
-    'model': setupModelView,
+    'machine': setupMachineView,
 };
 
 async function loadView(viewName, onLoadCallback = null) {
@@ -204,7 +203,7 @@ async function handleResetToDefaults() {
             newData._schema = JSON.parse(JSON.stringify(allData._schema));
         }
 
-        const modulesToReset = ['system', 'projects', 'model'];
+        const modulesToReset = ['system', 'projects', 'machine'];
         let didReset = false;
 
         // Rebuild the data store using only the default modules.
@@ -784,28 +783,31 @@ function setupSystemView() {
     };
 }
 
-// --- Model Settings View ---
-function setupModelView() {
-    console.log(`[setupModelView] START. currentView is: '${currentView}'.`);
+// --- Machine Settings View ---
+function setupMachineView() {
+    console.log(`[setupMachineView] START. currentView is: '${currentView}'.`);
     const dom = {
-        inputUnits: document.getElementById('model-input-units'),
-        outputUnits: document.getElementById('model-output-units'),
-        angleUnits: document.getElementById('model-angle-units'),
-        zeroReference: document.getElementById('model-zero-reference'),
-        positiveX: document.getElementById('model-positive-x'),
-        positiveY: document.getElementById('model-positive-y'),
-        positiveZ: document.getElementById('model-positive-z'),
-        minX: document.getElementById('model-min-x'),
-        maxX: document.getElementById('model-max-x'),
-        minY: document.getElementById('model-min-y'),
-        maxY: document.getElementById('model-max-y'),
-        minZ: document.getElementById('model-min-z'),
-        maxZ: document.getElementById('model-max-z'),
-        status: document.getElementById('model-status'),
+        inputUnits: document.getElementById('machine-input-units'),
+        outputUnits: document.getElementById('machine-output-units'),
+        angleUnits: document.getElementById('machine-angle-units'),
+        zeroReference: document.getElementById('machine-zero-reference'),
+        positiveX: document.getElementById('machine-positive-x'),
+        positiveY: document.getElementById('machine-positive-y'),
+        positiveZ: document.getElementById('machine-positive-z'),
+        fourthAxis: document.getElementById('machine-fourth-axis'),
+        positiveRotation: document.getElementById('machine-positive-rotation'),
+        rotationZero: document.getElementById('machine-rotation-zero'),
+        minX: document.getElementById('machine-min-x'),
+        maxX: document.getElementById('machine-max-x'),
+        minY: document.getElementById('machine-min-y'),
+        maxY: document.getElementById('machine-max-y'),
+        minZ: document.getElementById('machine-min-z'),
+        maxZ: document.getElementById('machine-max-z'),
+        status: document.getElementById('machine-status'),
     };
 
-    const allInputs = Object.values(dom).filter(el => el && el.id !== 'model-status');
-    const moduleName = 'model';
+    const allInputs = Object.values(dom).filter(el => el && el.id !== 'machine-status');
+    const moduleName = 'machine';
 
     function showStatus(message, isError = false, duration = 2000) {
         if (!dom.status) return;
@@ -813,6 +815,39 @@ function setupModelView() {
         dom.status.classList.remove('hidden');
         dom.status.style.color = isError ? 'var(--danger-color)' : 'green';
         setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
+    }
+
+    /**
+     * Updates the available options for the 'Rotation Zero' dropdown based on the
+     * value of the '4th Axis Around' dropdown, ensuring an axis cannot be its own zero reference.
+     */
+    function updateRotationZeroOptions() {
+        const fourthAxisValue = dom.fourthAxis.value;
+        const rotationZeroOptions = dom.rotationZero.options;
+
+        // Define which options are valid for each axis selection.
+        // The rotation zero cannot be in the same direction as the axis of rotation.
+        const validOptionsMap = {
+            'x': ['pos-y', 'neg-y', 'pos-z', 'neg-z'],
+            'y': ['pos-x', 'neg-x', 'pos-z', 'neg-z'],
+            'z': ['pos-x', 'neg-x', 'pos-y', 'neg-y']
+        };
+
+        const validForCurrentAxis = validOptionsMap[fourthAxisValue] || [];
+
+        // Hide or show options based on validity
+        for (const option of rotationZeroOptions) {
+            option.hidden = !validForCurrentAxis.includes(option.value);
+        }
+
+        // If the currently selected option is now hidden, switch to the first valid one.
+        if (dom.rotationZero.options[dom.rotationZero.selectedIndex].hidden) {
+            const firstVisibleOption = Array.from(rotationZeroOptions).find(opt => !opt.hidden);
+            if (firstVisibleOption) {
+                dom.rotationZero.value = firstVisibleOption.value;
+                dom.rotationZero.dispatchEvent(new Event('change')); // Trigger save
+            }
+        }
     }
 
     async function loadModelData() {
@@ -824,7 +859,10 @@ function setupModelView() {
                 zeroReference: 'center',
                 positiveX: 'right',
                 positiveY: 'front',
-                positiveZ: 'up'
+                positiveZ: 'up',
+                fourthAxis: 'x',
+                positiveRotation: 'rhr',
+                rotationZero: 'pos-y'
             };
             const allKeys = Object.keys(dom).filter(k => k !== 'status');
             const loadPromises = allKeys.map(async (key) => {
@@ -837,8 +875,10 @@ function setupModelView() {
                 }
             });
             await Promise.all(loadPromises);
+            // Set the initial state of dependent dropdowns after all values are loaded.
+            updateRotationZeroOptions();
         } catch (error) {
-            console.error('Failed to load model settings:', error);
+            console.error('Failed to load machine settings:', error);
             showStatus('Error loading settings.', true);
         }
     }
@@ -856,7 +896,7 @@ function setupModelView() {
                 updateGlobalDirtyStatusUI();
                 showStatus('Setting saved.');
             } catch (error) {
-                console.error(`Failed to save model setting for ${key}:`, error);
+                console.error(`Failed to save machine setting for ${key}:`, error);
                 showStatus(`Error saving ${key}`, true);
             }
         }
@@ -869,9 +909,12 @@ function setupModelView() {
         }
     });
 
+    // Add a specific listener for the controlling dropdown to update its dependent.
+    dom.fourthAxis.addEventListener('change', updateRotationZeroOptions);
+
     // Initial load
     loadModelData();
-    console.log(`[setupModelView] END. currentView is: '${currentView}'.`);
+    console.log(`[setupMachineView] END. currentView is: '${currentView}'.`);
 
     // No teardown needed as changes are saved immediately on change.
     return null;

@@ -44,7 +44,7 @@
       "endDate": ""
     }
   },
-  "model": {
+  "machine": {
     "inputUnits": "inch",
     "outputUnits": "inch",
     "angleUnits": "degrees",
@@ -54,9 +54,12 @@
     "maxY": "100",
     "minZ": "-50",
     "maxZ": "0",
-    "positiveZ": "down"
+    "positiveZ": "down",
+    "fourthAxis": "x",
+    "positiveRotation": "rhr",
+    "rotationZero": "pos-y"
   },
-  "default-model": {
+  "default-machine": {
     "inputUnits": "inch",
     "outputUnits": "inch",
     "angleUnits": "degrees",
@@ -65,6 +68,9 @@
     "minY": "-100",
     "maxY": "100",
     "minZ": "-50",
-    "maxZ": "0"
+    "maxZ": "0",
+    "fourthAxis": "x",
+    "positiveRotation": "rhr",
+    "rotationZero": "pos-y"
   }
 }
