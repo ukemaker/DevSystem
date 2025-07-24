@@ -2,7 +2,9 @@
     <h1>System Settings</h1>
 
 <div class="card user-info-card">
-    <h2>User</h2>
+    <div class="card-header">
+        <h2>User</h2>
+    </div>
     <form id="user-info-form">
         <div class="user-info-grid">
             <div class="form-field">
@@ -40,26 +42,14 @@
         </div>
         <!-- Button group for form actions -->
         <div class="form-actions">
-            <div>
+            <div class="button-group">
                 <button type="button" id="edit-user-info-btn">Edit</button>
                 <button type="submit" id="save-user-info-btn" disabled hidden>Save Changes</button>
-                <button type="button" id="cancel-edit-btn" disabled hidden>Cancel</button>
+                <button type="button" id="cancel-user-edit-btn" disabled hidden>Cancel</button>
             </div>
         </div>
         <p id="user-info-status" role="status" aria-live="polite" class="hidden"></p>
     </form>
-    <!-- File actions are global and should not be part of the user-info form. -->
-    <!-- Moving them here resolves the event conflict and improves semantics. -->
-    <div class="form-actions form-section-separator">
-        <p id="file-actions-status" role="status" aria-live="polite" class="hidden"></p>
-        <div class="button-group">
-            <button type="button" id="user-save-to-file-btn">Save To File</button>
-            <label class="btn-like-label">
-                Load From File
-                <input type="file" id="user-load-from-file-input" class="file-input-hidden" accept=".json">
-            </label>
-        </div>
-    </div>
 </div>
 
 <div class="card project-card">
@@ -98,7 +88,7 @@
             </div>
         </div>
         <div class="form-actions">
-            <div>
+            <div class="button-group">
                 <button type="button" id="edit-project-btn">Edit</button>
                 <button type="submit" id="save-project-btn" disabled hidden>Save Project</button>
                 <button type="button" id="cancel-project-btn" disabled hidden>Cancel</button>
@@ -107,4 +97,21 @@
         </div>
     </form>
 </div>
+
+<div class="card backup-card">
+    <div class="card-header">
+        <h2>Backup System</h2>
+    </div>
+    <div class="form-actions">
+        <p id="backup-status" role="status" aria-live="polite" class="hidden"></p>
+        <div class="button-group">
+            <button type="button" id="backup-system-btn">Backup System</button>
+            <label class="btn-like-label">
+                Restore System
+                <input type="file" id="restore-system-input" class="file-input-hidden" accept=".json">
+            </label>
+        </div>
+    </div>
+</div>
+
 </div>

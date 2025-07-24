@@ -213,13 +213,13 @@ function setupSystemView() {
         inputs: document.querySelectorAll('#user-info-form input[id]'),
         editBtn: document.getElementById('edit-user-info-btn'),
         saveBtn: document.getElementById('save-user-info-btn'),
-        cancelBtn: document.getElementById('cancel-edit-btn'),
+        cancelBtn: document.getElementById('cancel-user-edit-btn'),
         status: document.getElementById('user-info-status'),
 
-        // New buttons for user data import/export
-        userSaveToFileBtn: document.getElementById('user-save-to-file-btn'),
-        userLoadFromFileInput: document.getElementById('user-load-from-file-input'),
-        fileActionsStatus: document.getElementById('file-actions-status'),
+        // Backup and Restore elements
+        backupSystemBtn: document.getElementById('backup-system-btn'),
+        restoreSystemInput: document.getElementById('restore-system-input'),
+        backupStatus: document.getElementById('backup-status'),
 
         // Project section elements
         projectSelector: document.getElementById('project-selector'),
@@ -256,12 +256,12 @@ function setupSystemView() {
         setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
     }
 
-    function showFileActionStatus(message, isError = false, duration = 3000) {
-        if (!dom.fileActionsStatus) return;
-        dom.fileActionsStatus.textContent = message;
-        dom.fileActionsStatus.classList.remove('hidden');
-        dom.fileActionsStatus.style.color = isError ? 'var(--danger-color)' : 'green';
-        setTimeout(() => { dom.fileActionsStatus.classList.add('hidden'); }, duration);
+    function showBackupStatus(message, isError = false, duration = 3000) {
+        if (!dom.backupStatus) return;
+        dom.backupStatus.textContent = message;
+        dom.backupStatus.classList.remove('hidden');
+        dom.backupStatus.style.color = isError ? 'var(--danger-color)' : 'green';
+        setTimeout(() => { dom.backupStatus.classList.add('hidden'); }, duration);
     }
 
     // Gets current data from the form fields
@@ -627,8 +627,8 @@ function setupSystemView() {
     });
 
     // User Data File Listeners
-    if (dom.userSaveToFileBtn) {
-        dom.userSaveToFileBtn.addEventListener('click', async (event) => {
+    if (dom.backupSystemBtn) {
+        dom.backupSystemBtn.addEventListener('click', async (event) => {
             console.log(`%c[Save To File] Process Started. currentView is: '${currentView}'.`, 'color: blue; font-weight: bold;');
             event.preventDefault(); // Prevent any default browser action
             event.stopPropagation(); // Stop the event from bubbling up
@@ -652,21 +652,21 @@ function setupSystemView() {
                 console.log('[Save To File] Updating global state to clean.');
                 globalState.isDirty = false;
                 updateGlobalDirtyStatusUI(); // Update any relevant UI indicators
-                showFileActionStatus('File saved and unsaved changes cleared.');
+                showBackupStatus('File saved and unsaved changes cleared.');
                 console.log('%c[Save To File] Process Finished Successfully.', 'color: green; font-weight: bold;');
             } catch (error) {
                 console.error('[Save To File] An error occurred during the process:', error);
-                showFileActionStatus('Error exporting data.', true);
+                showBackupStatus('Error exporting data.', true);
             }
         });
     }
-    if (dom.userLoadFromFileInput) {
-        dom.userLoadFromFileInput.addEventListener('change', async (event) => {
+    if (dom.restoreSystemInput) {
+        dom.restoreSystemInput.addEventListener('change', async (event) => {
             try {
                 await handleGlobalImport(event, 'system');
             } catch (error) {
                 console.error('Failed to import data:', error);
-                showFileActionStatus(`Error: ${error.message}`, true, 5000);
+                showBackupStatus(`Error: ${error.message}`, true, 5000);
             }
         });
     }

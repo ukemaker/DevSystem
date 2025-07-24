@@ -231,6 +231,15 @@ nav#sidebar-nav {
     border: none;
     font-size: 1.2rem;
 }
+
+/* Unify card titles that are direct children of a card with those in a card-header */
+.card > h2 {
+    font-size: 1.2rem; /* Match .card-header h2 */
+    border-bottom: none; /* Override general h2 rule */
+    padding-bottom: 0; /* Override general h2 rule */
+    margin-bottom: 20px; /* Provide consistent spacing below the title */
+}
+
 .card-header .search-container {
     display: flex;
     gap: 10px;
@@ -286,7 +295,8 @@ nav#sidebar-nav {
 
 /* Constrain the width of the settings cards to half their container */
 .user-info-card,
-.project-card {
+.project-card,
+.backup-card {
     max-width: 50%;
 }
 
@@ -326,7 +336,8 @@ nav#sidebar-nav {
 
     /* On smaller screens, let the cards take the full width for readability */
     .user-info-card,
-    .project-card {
+    .project-card,
+    .backup-card {
         max-width: 100%;
     }
 }

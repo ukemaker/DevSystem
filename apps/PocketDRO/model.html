@@ -1,4 +1,117 @@
-<h1>Model Settings</h1>
+<div style="width: 60%; margin: 0 auto;">
+    <h1>Model Settings</h1>
 
-<p>Module content will be developed here.</p>
+<div class="card user-info-card">
+    <div class="card-header">
+        <h2>User</h2>
+    </div>
+    <form id="user-info-form">
+        <div class="user-info-grid">
+            <div class="form-field">
+                <label for="user-name">Name</label>
+                <input type="text" id="user-name" placeholder="e.g., Jane Doe" disabled>
+            </div>
+            <div class="form-field">
+                <label for="user-email">Email</label>
+                <input type="email" id="user-email" placeholder="e.g., jane.doe@example.com" disabled>
+            </div>
+            <div class="form-field">
+                <label for="user-company">Company</label>
+                <input type="text" id="user-company" placeholder="e.g., Acme Inc." disabled>
+            </div>
+            <div class="form-field">
+                <label for="user-title">Title</label>
+                <input type="text" id="user-title" placeholder="e.g., Machinist" disabled>
+            </div>
+            <div class="form-field full-width">
+                <label for="user-street">Street Address</label>
+                <input type="text" id="user-street" placeholder="e.g., 123 Main St" disabled>
+            </div>
+            <div class="form-field">
+                <label for="user-city">City</label>
+                <input type="text" id="user-city" placeholder="e.g., Anytown" disabled>
+            </div>
+            <div class="form-field">
+                <label for="user-state">State / Province</label>
+                <input type="text" id="user-state" placeholder="e.g., CA" disabled>
+            </div>
+            <div class="form-field full-width">
+                <label for="user-phone">Phone</label>
+                <input type="text" id="user-phone" placeholder="e.g., 555-123-4567" disabled>
+            </div>
+        </div>
+        <!-- Button group for form actions -->
+        <div class="form-actions">
+            <div class="button-group">
+                <button type="button" id="edit-user-info-btn">Edit</button>
+                <button type="submit" id="save-user-info-btn" disabled hidden>Save Changes</button>
+                <button type="button" id="cancel-user-edit-btn" disabled hidden>Cancel</button>
+            </div>
+        </div>
+        <p id="user-info-status" role="status" aria-live="polite" class="hidden"></p>
+    </form>
+</div>
 
+<div class="card project-card">
+    <div class="card-header">
+        <h2>Active Project</h2>
+        <button type="button" id="add-project-btn" class="btn-primary">Add New Project</button>
+    </div>
+    <div class="form-field">
+        <label for="project-selector">Project</label>
+        <select id="project-selector" name="project-selector"></select>
+    </div>
+    <form id="project-details-form" class="hidden">
+        <div class="project-details-grid">
+            <div class="form-field full-width">
+                <label for="project-description">Description</label>
+                <textarea id="project-description" rows="3" placeholder="A brief summary of the project..." disabled></textarea>
+            </div>
+            <div class="form-row full-width">
+                <div class="form-field">
+                    <label for="project-status">Status</label>
+                    <select id="project-status" disabled>
+                        <option value="Not Started">Not Started</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="On Hold">On Hold</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="project-start-date">Start Date</label>
+                    <input type="date" id="project-start-date" disabled>
+                </div>
+                <div class="form-field">
+                    <label for="project-end-date">End Date</label>
+                    <input type="date" id="project-end-date" disabled>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <div class="button-group">
+                <button type="button" id="edit-project-btn">Edit</button>
+                <button type="submit" id="save-project-btn" disabled hidden>Save Project</button>
+                <button type="button" id="cancel-project-btn" disabled hidden>Cancel</button>
+            </div>
+            <button type="button" id="delete-project-btn" class="btn-danger" disabled hidden>Delete</button>
+        </div>
+    </form>
+</div>
+
+<div class="card backup-card">
+    <div class="card-header">
+        <h2>Backup System</h2>
+    </div>
+    <div class="form-actions">
+        <p id="backup-status" role="status" aria-live="polite" class="hidden"></p>
+        <div class="button-group">
+            <button type="button" id="backup-system-btn">Backup System</button>
+            <label class="btn-like-label">
+                Restore System
+                <input type="file" id="restore-system-input" class="file-input-hidden" accept=".json">
+            </label>
+        </div>
+    </div>
+</div>
+
+</div>
