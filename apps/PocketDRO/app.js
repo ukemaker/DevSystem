@@ -203,12 +203,13 @@ async function handleResetToDefaults() {
             newData._schema = JSON.parse(JSON.stringify(allData._schema));
         }
 
-        const modulesToReset = ['system', 'projects', 'machine'];
+        const modulesToReset = ['system', 'projects', 'machine']; // 'machine' is the module name
         let didReset = false;
 
         // Rebuild the data store using only the default modules.
         for (const moduleName of modulesToReset) {
-            const defaultKey = `default-${moduleName}`;
+            // The default key for 'machine' is 'default-machines'
+            const defaultKey = moduleName === 'machine' ? 'default-machines' : `default-${moduleName}`;
             if (allData[defaultKey]) {
                 // Copy the default data to the active module key (e.g., 'system').
                 newData[moduleName] = JSON.parse(JSON.stringify(allData[defaultKey]));
@@ -784,28 +785,103 @@ function setupSystemView() {
 }
 
 // --- Machine Settings View ---
+// --- Machine Settings View ---
 function setupMachineView() {
-    console.log(`[setupMachineView] START. currentView is: '${currentView}'.`);
+    console.log(`[setupMachineView] START.`);
+    // --- DOM Cache ---
     const dom = {
+        // Machine selection
+        selector: document.getElementById('machine-selector'),
+        addBtn: document.getElementById('add-machine-btn'),
+        deleteBtn: document.getElementById('delete-machine-btn'),
+
+        // Form and controls
+        form: document.getElementById('machine-details-form'),
+        editBtn: document.getElementById('edit-machine-btn'),
+        saveBtn: document.getElementById('save-machine-btn'),
+        cancelBtn: document.getElementById('cancel-machine-edit-btn'),
+        status: document.getElementById('machine-status'),
+
+        // Form fields
+        description: document.getElementById('machine-description'),
         inputUnits: document.getElementById('machine-input-units'),
-        outputUnits: document.getElementById('machine-output-units'),
+        precision: document.getElementById('machine-precision'),
         angleUnits: document.getElementById('machine-angle-units'),
-        zeroReference: document.getElementById('machine-zero-reference'),
         positiveX: document.getElementById('machine-positive-x'),
         positiveY: document.getElementById('machine-positive-y'),
         positiveZ: document.getElementById('machine-positive-z'),
-        fourthAxis: document.getElementById('machine-fourth-axis'),
-        positiveRotation: document.getElementById('machine-positive-rotation'),
-        rotationZero: document.getElementById('machine-rotation-zero'),
         xTravel: document.getElementById('machine-x-travel'),
         yTravel: document.getElementById('machine-y-travel'),
         zTravel: document.getElementById('machine-z-travel'),
-        status: document.getElementById('machine-status'),
+        fourthAxis: document.getElementById('machine-fourth-axis'),
+        positiveRotation: document.getElementById('machine-positive-rotation'),
+        rotationZero: document.getElementById('machine-rotation-zero'),
+        
+        // Modal elements
+        addModal: document.getElementById('add-machine-modal'),
+        addForm: document.getElementById('add-machine-form'),
+        modalCloseBtn: document.getElementById('machine-modal-close-btn'),
+        modalCancelBtn: document.getElementById('machine-modal-cancel-btn'),
     };
 
-    const allInputs = Object.values(dom).filter(el => el && el.id !== 'machine-status');
-    const moduleName = 'machine';
+    // --- State Variables ---
+    const allFormInputs = Array.from(dom.form.querySelectorAll('input, select, textarea'));
 
+    let allMachines = {};
+    let activeMachineName = null;
+    let originalMachineData = {};
+    let previousLinearUnit = null; // Add this to track unit changes during an edit session.
+
+    // --- Formatting and Conversion Utilities (Agnostic) ---
+
+    const INCH_TO_MM = 25.4;
+
+    /**
+     * Converts a linear value from one unit to another.
+     * @param {number | string} value The numerical value to convert.
+     * @param {string} fromUnit The starting unit ('inch' or 'metric').
+     * @param {string} toUnit The target unit ('inch' or 'metric').
+     * @returns {number | null} The converted value, or null if units are invalid or value is not a number.
+     */
+    function convertLinear(value, fromUnit, toUnit) {
+        const numValue = Number(value);
+        if (isNaN(numValue) || fromUnit === toUnit) {
+            return numValue;
+        }
+        if (fromUnit === 'inch' && toUnit === 'metric') {
+            return numValue * INCH_TO_MM;
+        }
+        if (fromUnit === 'metric' && toUnit === 'inch') {
+            return numValue / INCH_TO_MM;
+        }
+        return null; // Invalid unit combination
+    }
+
+    /**
+     * Formats a number to a specified number of decimal places.
+     * @param {number | string} value The number to format.
+     * @param {number | string} precision The number of decimal places.
+     * @returns {string} The formatted number as a string, or the original value if invalid.
+     */
+    function formatNumber(value, precision) {
+        const numValue = Number(value);
+        const numPrecision = Number(precision);
+        if (isNaN(numValue) || isNaN(numPrecision) || numPrecision < 0) {
+            return String(value); // Return original value if not a valid number/precision
+        }
+        return numValue.toFixed(numPrecision);
+    }
+
+    /**
+     * Gets the default display precision for a given linear unit.
+     * @param {string} unit The linear unit ('inch' or 'metric').
+     * @returns {number} The default number of decimal places.
+     */
+    function getDefaultPrecision(unit) {
+        return unit === 'metric' ? 2 : 3;
+    }
+
+    // --- UI and Event Handlers ---
     function showStatus(message, isError = false, duration = 2000) {
         if (!dom.status) return;
         dom.status.textContent = message;
@@ -815,109 +891,304 @@ function setupMachineView() {
     }
 
     /**
-     * Updates the available options for the 'Rotation Zero' dropdown based on the
-     * value of the '4th Axis Around' dropdown, ensuring an axis cannot be its own zero reference.
+     * Handles the live conversion of travel values when the linear unit is changed.
      */
-    function updateRotationZeroOptions() {
-        const fourthAxisValue = dom.fourthAxis.value;
-        const rotationZeroOptions = dom.rotationZero.options;
-
-        // Define which options are valid for each axis selection.
-        // The rotation zero cannot be in the same direction as the axis of rotation.
-        const validOptionsMap = {
-            'x': ['pos-y', 'neg-y', 'pos-z', 'neg-z'],
-            'y': ['pos-x', 'neg-x', 'pos-z', 'neg-z'],
-            'z': ['pos-x', 'neg-x', 'pos-y', 'neg-y']
-        };
-
-        const validForCurrentAxis = validOptionsMap[fourthAxisValue] || [];
-
-        // Hide or show options based on validity
-        for (const option of rotationZeroOptions) {
-            option.hidden = !validForCurrentAxis.includes(option.value);
+    function handleUnitChange() {
+        const newUnit = dom.inputUnits.value;
+        if (newUnit === previousLinearUnit) {
+            return; // No change, do nothing.
         }
 
-        // If the currently selected option is now hidden, switch to the first valid one.
-        if (dom.rotationZero.options[dom.rotationZero.selectedIndex].hidden) {
-            const firstVisibleOption = Array.from(rotationZeroOptions).find(opt => !opt.hidden);
-            if (firstVisibleOption) {
-                dom.rotationZero.value = firstVisibleOption.value;
-                dom.rotationZero.dispatchEvent(new Event('change')); // Trigger save
+        // Determine and set the new default precision.
+        const newPrecision = getDefaultPrecision(newUnit);
+        dom.precision.value = newPrecision;
+
+        const travelFields = [dom.xTravel, dom.yTravel, dom.zTravel];
+        travelFields.forEach(field => {
+            const convertedValue = convertLinear(field.value, previousLinearUnit, newUnit);
+            if (convertedValue !== null) {
+                field.value = formatNumber(convertedValue, newPrecision);
             }
+        });
+
+        // Update the state to reflect the new unit for the next potential change.
+        previousLinearUnit = newUnit;
+    }
+    /**
+     * Handles the live formatting of travel values when the precision is changed.
+     */
+    function handlePrecisionChange() {
+        const newPrecision = dom.precision.value;
+        const travelFields = [dom.xTravel, dom.yTravel, dom.zTravel];
+        travelFields.forEach(field => {
+            field.value = formatNumber(field.value, newPrecision);
+        });
+    }
+
+    function setEditMode(isEditing) {
+        allFormInputs.forEach(input => input.disabled = !isEditing);
+        dom.description.disabled = !isEditing; // Description is outside the form, handle explicitly
+        dom.editBtn.hidden = isEditing;
+        dom.saveBtn.hidden = !isEditing;
+        dom.cancelBtn.hidden = !isEditing;
+        dom.saveBtn.disabled = !isEditing;
+        dom.cancelBtn.disabled = !isEditing;
+        // Also disable the main selector and add/delete buttons
+        dom.selector.disabled = isEditing;
+        dom.addBtn.disabled = isEditing;
+        dom.deleteBtn.disabled = isEditing;
+
+        if (isEditing) {
+            // When entering edit mode, store the current unit to track changes.
+            previousLinearUnit = dom.inputUnits.value;
+        }
+
+        if (!isEditing) {
+            // When entering view mode, format the travel fields based on the precision setting.
+            const precision = dom.precision.value;
+            const travelFields = [dom.xTravel, dom.yTravel, dom.zTravel];
+    
+            travelFields.forEach(field => {
+                field.value = formatNumber(field.value, precision);
+            });
         }
     }
 
-    async function loadModelData() {
-        try {
-            const defaultValues = {
-                inputUnits: 'inch',
-                outputUnits: 'inch',
-                angleUnits: 'degrees',
-                zeroReference: 'center',
-                positiveX: 'right',
-                positiveY: 'front',
-                positiveZ: 'up',
-                fourthAxis: 'x',
-                positiveRotation: 'rhr',
-                rotationZero: 'pos-y',
-                xTravel: 200,
-                yTravel: 200,
-                zTravel: 50
-            };
-            const allKeys = Object.keys(dom).filter(k => k !== 'status');
-            const loadPromises = allKeys.map(async (key) => {
-                const element = dom[key];
-                if (element) {
-                    const defaultValue = defaultValues[key] || '';
-                    const storedValue = await dataManager.getItem(moduleName, key);
-                    // Use default value only if stored value is null/undefined
-                    element.value = storedValue ?? defaultValue;
+    function populateSelector() {
+        dom.selector.innerHTML = '';
+        const machineNames = Object.keys(allMachines);
+        if (machineNames.length === 0) {
+            const option = document.createElement('option');
+            option.textContent = 'No machines configured';
+            dom.selector.appendChild(option);
+            dom.selector.disabled = true;
+            dom.deleteBtn.disabled = true;
+            dom.form.classList.add('hidden');
+            return;
+        }
+
+        dom.selector.disabled = false;
+        machineNames.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            if (name === activeMachineName) {
+                option.selected = true;
+            }
+            dom.selector.appendChild(option);
+        });
+    }
+
+    function updateFormForMachine(machineName) {
+        const machine = allMachines[machineName];
+        if (machine) {
+            originalMachineData = JSON.parse(JSON.stringify(machine)); // Deep copy for cancellation
+            Object.keys(dom).forEach(key => {
+                if (dom[key] && dom[key].nodeName !== 'BUTTON' && machine.hasOwnProperty(key)) {
+                    dom[key].value = machine[key];
                 }
             });
-            await Promise.all(loadPromises);
-            // Set the initial state of dependent dropdowns after all values are loaded.
-            updateRotationZeroOptions();
-        } catch (error) {
-            console.error('Failed to load machine settings:', error);
-            showStatus('Error loading settings.', true);
+            // Handle case where precision might not be in the data for older machine configs
+            if (machine.precision === undefined) {
+                dom.precision.value = getDefaultPrecision(machine.inputUnits);
+                originalMachineData.precision = dom.precision.value; // Also update our 'cancel' copy
+            }
+            dom.form.classList.remove('hidden');
+            dom.deleteBtn.disabled = false;
+            setEditMode(false);
+        } else {
+            // No machine selected or found, hide the form
+            dom.form.classList.add('hidden');
+            dom.deleteBtn.disabled = true;
         }
     }
 
-    async function handleInputChange(event) {
-        const element = event.target;
-        // Find the key in our dom object that corresponds to this element
-        const key = Object.keys(dom).find(k => dom[k] === element);
-        const value = element.value;
+    async function loadAllMachineData() {
+        try {
+            const data = await dataManager.getAllItems();
+            allMachines = data.machine || {};
+            activeMachineName = data.system?.activeMachineName || null;
 
-        if (key) {
-            try {
-                await dataManager.setItem(moduleName, key, value);
-                globalState.isDirty = true;
-                updateGlobalDirtyStatusUI();
-                showStatus('Setting saved.');
-            } catch (error) {
-                console.error(`Failed to save machine setting for ${key}:`, error);
-                showStatus(`Error saving ${key}`, true);
+            // If active machine doesn't exist, pick the first one
+            if (activeMachineName && !allMachines[activeMachineName]) {
+                activeMachineName = Object.keys(allMachines)[0] || null;
             }
+
+            populateSelector();
+            updateFormForMachine(activeMachineName);
+        } catch (error) {
+            console.error('Failed to load machine data:', error);
+            showStatus('Error loading machine data.', true);
+        }
+    }
+
+    async function handleSelectionChange() {
+        const newActiveName = dom.selector.value;
+        if (newActiveName === activeMachineName) return;
+
+        try {
+            await dataManager.setItem('system', 'activeMachineName', newActiveName);
+            activeMachineName = newActiveName;
+            updateFormForMachine(activeMachineName);
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+        } catch (error) {
+            console.error('Failed to set active machine:', error);
+            showStatus('Error setting active machine.', true);
+        }
+    }
+
+    async function handleSave() {
+        const machineName = activeMachineName;
+
+        if (!machineName) {
+            showStatus('No active machine to save.', true);
+            return;
+        }
+
+        const updatedMachineData = {};
+        allFormInputs.forEach(input => {
+            const key = Object.keys(dom).find(k => dom[k] === input);
+            if (key) {
+                let value = input.value;
+                // Ensure number types are stored as numbers for data consistency
+                if (input.type === 'number' && value.trim() !== '' && !isNaN(Number(value))) {
+                    value = Number(value);
+                }
+                updatedMachineData[key] = value;
+            }
+        });
+
+        // Manually add the description to the data object, as it is
+        // not part of the main form's input collection.
+        updatedMachineData.description = dom.description.value.trim();
+
+        try {
+            // Save the updated data. Renaming is no longer supported via this form.
+            await dataManager.setItem('machine', machineName, updatedMachineData);
+            
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus('Machine saved successfully.');
+
+            // Reload all data to ensure UI consistency after the save.
+            await loadAllMachineData(); // Reload everything to reflect changes
+            setEditMode(false);
+
+        } catch (error) {
+            console.error('Failed to save machine:', error);
+            showStatus('Error saving machine.', true);
+        }
+    }
+
+    function handleCancel() {
+        // Revert form to the state it was in before "Edit" was clicked.
+        if (originalMachineData) {
+            Object.keys(dom).forEach(key => {
+                if (dom[key] && dom[key].nodeName !== 'BUTTON' && originalMachineData.hasOwnProperty(key)) {
+                    dom[key].value = originalMachineData[key];
+                }
+            });
+        }
+        setEditMode(false);
+    }
+
+    async function handleDelete() {
+        if (!activeMachineName) return;
+        if (!confirm(`Are you sure you want to delete the machine "${activeMachineName}"? This cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await dataManager.deleteItem('machine', activeMachineName);
+            
+            // Find a new active machine
+            const remainingNames = Object.keys(allMachines).filter(name => name !== activeMachineName);
+            const newActiveName = remainingNames.length > 0 ? remainingNames[0] : null;
+            await dataManager.setItem('system', 'activeMachineName', newActiveName);
+
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus(`Machine "${activeMachineName}" deleted.`);
+            await loadAllMachineData(); // Reload to update UI
+
+        } catch (error) {
+            console.error('Failed to delete machine:', error);
+            showStatus('Error deleting machine.', true);
+        }
+    }
+
+    // --- Modal Functions ---
+    function openAddModal() {
+        dom.addForm.reset();
+        dom.addModal.classList.add('active');
+        document.getElementById('new-machine-name').focus();
+    }
+
+    function closeAddModal() {
+        dom.addModal.classList.remove('active');
+    }
+
+    async function handleAddSave(e) {
+        e.preventDefault();
+        const newName = document.getElementById('new-machine-name').value.trim();
+        if (!newName) {
+            alert('Machine Name is required.');
+            return;
+        }
+        if (allMachines[newName]) {
+            alert(`A machine named "${newName}" already exists.`);
+            return;
+        }
+
+        // Create a new machine from the default settings
+        const defaults = await dataManager.getItem('default-machines', 'Default Mill');
+        const newMachine = defaults ? JSON.parse(JSON.stringify(defaults)) : {}; // Deep copy
+        newMachine.description = document.getElementById('new-machine-description').value.trim();
+
+        try {
+            await dataManager.setItem('machine', newName, newMachine);
+            await dataManager.setItem('system', 'activeMachineName', newName);
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatus('New machine added.');
+            closeAddModal();
+            await loadAllMachineData();
+        } catch (error) {
+            console.error('Failed to add machine:', error);
+            showStatus('Error adding new machine.', true);
         }
     }
 
     // Attach listeners
-    allInputs.forEach(input => {
-        if (input) {
-            input.addEventListener('change', handleInputChange);
-        }
+    dom.selector.addEventListener('change', handleSelectionChange);
+    dom.editBtn.addEventListener('click', () => setEditMode(true));
+    dom.cancelBtn.addEventListener('click', handleCancel);
+    dom.deleteBtn.addEventListener('click', handleDelete);
+    dom.form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleSave();
     });
+    dom.inputUnits.addEventListener('change', handleUnitChange);
+    dom.precision.addEventListener('change', handlePrecisionChange);
 
-    // Add a specific listener for the controlling dropdown to update its dependent.
-    dom.fourthAxis.addEventListener('change', updateRotationZeroOptions);
+    // Modal Listeners
+    dom.addBtn.addEventListener('click', openAddModal);
+    dom.modalCloseBtn.addEventListener('click', closeAddModal);
+    dom.modalCancelBtn.addEventListener('click', closeAddModal);
+    dom.addForm.addEventListener('submit', handleAddSave);
 
     // Initial load
-    loadModelData();
-    console.log(`[setupMachineView] END. currentView is: '${currentView}'.`);
+    loadAllMachineData();
+    console.log(`[setupMachineView] END.`);
 
-    // No teardown needed as changes are saved immediately on change.
-    return null;
+    return () => {
+        // Teardown guard
+        if (dom.editBtn.hidden) { // We are in edit mode
+            return confirm('You have unsaved changes. Are you sure you want to leave?');
+        }
+        return true; // OK to navigate away
+    };
 }
 
 // --- Program Settings View ---

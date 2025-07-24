@@ -3,70 +3,80 @@
 
     <div class="card card-constrained">
         <div class="card-header">
-            <h2>Units</h2>
+            <h2>Select Machine</h2>
+            <div class="button-group">
+                <button type="button" id="add-machine-btn" class="btn-primary">Add New</button>
+                <button type="button" id="delete-machine-btn" class="btn-danger" disabled>Delete Selected</button>
+            </div>
         </div>
-        <div class="form-row">
-            <div class="form-field">
-                <label for="machine-input-units">Input</label>
-                <select id="machine-input-units">
-                    <option value="inch">Inch</option>
-                    <option value="metric">Metric</option>
-                </select>
-            </div>
-            <div class="form-field">
-                <label for="machine-output-units">Output</label>
-                <select id="machine-output-units">
-                    <option value="inch">Inch</option>
-                    <option value="metric">Metric</option>
-                </select>
-            </div>
-            <div class="form-field">
-                <label for="machine-angle-units">Angle</label>
-                <select id="machine-angle-units">
-                    <option value="degrees">Degrees</option>
-                    <option value="radians">Radians</option>
-                </select>
-            </div>
+        <div class="form-field">
+            <label for="machine-selector">Machine</label>
+            <select id="machine-selector"></select>
+        </div>
+        <div class="form-field" style="margin-top: 12px;">
+            <label for="machine-description">Description</label>
+            <textarea id="machine-description" rows="3" placeholder="A brief description of the machine..." disabled></textarea>
         </div>
     </div>
 
+<form id="machine-details-form" class="hidden">
     <div class="card card-constrained">
         <div class="card-header">
             <h2>Reference Coordinate System</h2>
         </div>
         <div class="form-stack">
-            <div class="form-field">
-                <label for="machine-zero-reference">Zero X-Y</label>
-                <select id="machine-zero-reference">
-                    <option value="center">Center</option>
-                    <option value="top-left">Top-Left</option>
-                    <option value="middle-left">Middle-Left</option>
-                    <option value="bottom-left">Bottom-Left</option>
-                    <option value="top-right">Top-Right</option>
-                    <option value="middle-right">Middle-Right</option>
-                    <option value="bottom-right">Bottom-Right</option>
-                    <option value="top-middle">Top-Middle</option>
-                    <option value="bottom-middle">Bottom-Middle</option>
-                </select>
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="machine-input-units">Linear Units</label>
+                    <select id="machine-input-units" disabled>
+                        <option value="inch">Inch</option>
+                    <option value="metric">mm</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="machine-angle-units">Angular Units</label>
+                    <select id="machine-angle-units" disabled>
+                        <option value="degrees">Degrees</option>
+                        <option value="radians">Radians</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="machine-precision">Precision</label>
+                    <input type="number" id="machine-precision" min="0" max="8" step="1" placeholder="e.g., 4" disabled>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="machine-x-travel">X Travel</label>
+                    <input type="number" id="machine-x-travel" placeholder="e.g., 200" step="any" disabled>
+                </div>
+                <div class="form-field">
+                    <label for="machine-y-travel">Y Travel</label>
+                    <input type="number" id="machine-y-travel" placeholder="e.g., 200" step="any" disabled>
+                </div>
+                <div class="form-field">
+                    <label for="machine-z-travel">Z Travel</label>
+                    <input type="number" id="machine-z-travel" placeholder="e.g., 50" step="any" disabled>
+                </div>
             </div>
             <div class="form-row">
                 <div class="form-field">
                     <label for="machine-positive-x">Positive-X</label>
-                    <select id="machine-positive-x">
+                    <select id="machine-positive-x" disabled>
                         <option value="right">Right Side of Table</option>
                         <option value="left">Left Side of Table</option>
                     </select>
                 </div>
                 <div class="form-field">
                     <label for="machine-positive-y">Positive-Y</label>
-                    <select id="machine-positive-y">
+                    <select id="machine-positive-y" disabled>
                         <option value="front">Front of Table</option>
                         <option value="back">Back of Table</option>
                     </select>
                 </div>
                 <div class="form-field">
                     <label for="machine-positive-z">Positive-Z</label>
-                    <select id="machine-positive-z">
+                    <select id="machine-positive-z" disabled>
                         <option value="up">Spindle Moves Up</option>
                         <option value="down">Spindle Moves Down</option>
                     </select>
@@ -74,22 +84,8 @@
             </div>
             <div class="form-row">
                 <div class="form-field">
-                    <label for="machine-x-travel">X Travel</label>
-                    <input type="number" id="machine-x-travel" placeholder="e.g., 200">
-                </div>
-                <div class="form-field">
-                    <label for="machine-y-travel">Y Travel</label>
-                    <input type="number" id="machine-y-travel" placeholder="e.g., 200">
-                </div>
-                <div class="form-field">
-                    <label for="machine-z-travel">Z Travel</label>
-                    <input type="number" id="machine-z-travel" placeholder="e.g., 50">
-                </div>
-            </div>
-            <div class="form-row" style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 15px;">
-                <div class="form-field">
                     <label for="machine-fourth-axis">4th Axis Around</label>
-                    <select id="machine-fourth-axis">
+                    <select id="machine-fourth-axis" disabled>
                         <option value="x">X-Axis</option>
                         <option value="y">Y-Axis</option>
                         <option value="z">Z-Axis</option>
@@ -97,14 +93,14 @@
                 </div>
                 <div class="form-field">
                     <label for="machine-positive-rotation">Positive Rotation</label>
-                    <select id="machine-positive-rotation">
+                    <select id="machine-positive-rotation" disabled>
                         <option value="rhr">Right Hand Rule</option>
                         <option value="lhr">Left Hand Rule</option>
                     </select>
                 </div>
                 <div class="form-field">
                     <label for="machine-rotation-zero">Rotation Zero</label>
-                    <select id="machine-rotation-zero">
+                    <select id="machine-rotation-zero" disabled>
                         <option value="pos-x">+X Direction</option>
                         <option value="neg-x">-X Direction</option>
                         <option value="pos-y">+Y Direction</option>
@@ -115,6 +111,14 @@
                 </div>
             </div>
         </div>
+        <div class="form-actions" style="margin-top: 20px;">
+            <div class="button-group">
+                <button type="button" id="edit-machine-btn" class="btn-primary">Edit</button>
+                <button type="submit" id="save-machine-btn" disabled hidden>Save Changes</button>
+                <button type="button" id="cancel-machine-edit-btn" disabled hidden>Cancel</button>
+            </div>
+        </div>
         <p id="machine-status" role="status" aria-live="polite" class="hidden" style="margin-top: 15px; text-align: right;"></p>
     </div>
+</form>
 </div>

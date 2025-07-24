@@ -15,7 +15,8 @@
     "city": "BERKELEY",
     "state": "CA",
     "phone": "5108598532",
-    "activeProjectName": "Your Project"
+    "activeProjectName": "Your Project",
+    "activeMachineName": "Milling Machine"
   },
   "default-system": {
     "name": "Michael DaSilva",
@@ -26,7 +27,8 @@
     "city": "BERKELEY",
     "state": "CA",
     "phone": "5108598532",
-    "activeProjectName": "Your Project"
+    "activeProjectName": "Your Project",
+    "activeMachineName": "Milling Machine"
   },
   "projects": {
     "Your Project": {
@@ -44,34 +46,61 @@
       "endDate": ""
     }
   },
-  "machine": {
+  "model": {
     "inputUnits": "inch",
     "outputUnits": "inch",
-    "angleUnits": "degrees",
-    "zeroReference": "center",
-    "positiveX": "right",
-    "positiveY": "front",
+    "minX": "-100",
+    "maxX": "100",
+    "minY": "-100",
+    "maxY": "100",
+    "minZ": "-50",
+    "maxZ": "0",
     "positiveZ": "down",
-    "fourthAxis": "x",
-    "positiveRotation": "rhr",
-    "rotationZero": "pos-y",
-    "xTravel": 200,
-    "yTravel": 200,
-    "zTravel": 50
+    "angleUnits": "degrees",
+    "fourthAxis": "x"
   },
-  "default-machine": {
+  "default-model": {
     "inputUnits": "inch",
     "outputUnits": "inch",
-    "angleUnits": "degrees",
-    "zeroReference": "center",
-    "positiveX": "right",
-    "positiveY": "front",
-    "positiveZ": "down",
-    "fourthAxis": "x",
-    "positiveRotation": "rhr",
-    "rotationZero": "pos-y",
-    "xTravel": 200,
-    "yTravel": 200,
-    "zTravel": 50
+    "minX": "-100",
+    "maxX": "100",
+    "minY": "-100",
+    "maxY": "100",
+    "minZ": "-50",
+    "maxZ": "0"
+  },
+  "machine": {
+    "Milling Machine": {
+      "inputUnits": "inch",
+      "angleUnits": "degrees",
+      "precision": 3,
+      "xTravel": 12,
+      "yTravel": 6,
+      "zTravel": 3,
+      "positiveX": "right",
+      "positiveY": "front",
+      "positiveZ": "up",
+      "fourthAxis": "x",
+      "positiveRotation": "rhr",
+      "rotationZero": "pos-x",
+      "description": "Rong Fu"
+    },
+    "Lathe": {
+      "inputUnits": "inch",
+      "outputUnits": "inch",
+      "angleUnits": "degrees",
+      "name": "Lathe",
+      "description": "mini lathe",
+      "zeroReference": "center",
+      "positiveX": "right",
+      "positiveY": "front",
+      "positiveZ": "up",
+      "xTravel": "10",
+      "yTravel": "6",
+      "zTravel": "3",
+      "fourthAxis": "x",
+      "positiveRotation": "rhr",
+      "rotationZero": "pos-x"
+    }
   }
 }

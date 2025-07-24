@@ -26,6 +26,7 @@ input[type="date"],
 input[type="number"],
 input[type="file"],
 select,
+textarea,
 input[type="color"] {
     width: 100%;
     padding: 8px 12px;
@@ -33,12 +34,16 @@ input[type="color"] {
     border-radius: 4px;
     box-sizing: border-box;
     font-size: 1rem;
+    font-family: var(--font-family);
 }
 
 /* Style for disabled inputs to make them visually distinct */
-input:disabled {
+input:disabled,
+select:disabled,
+textarea:disabled {
     background-color: var(--border-color-light); /* A light grey to indicate non-editable state */
     color: #6c757d; /* Muted text color */
+    cursor: not-allowed;
 }
 
 input[type="color"] {
@@ -84,10 +89,10 @@ button.btn-danger:hover {
     border-color: var(--danger-color-hover);
 }
 button:disabled {
-    background-color: var(--border-color-light);
+    background-color: #ced4da; /* A darker gray for inactive buttons */
     color: #6c757d;
     cursor: not-allowed;
-    border-color: var(--border-color);
+    border-color: #adb5bd; /* A matching darker border */
 }
 
 
@@ -146,6 +151,11 @@ body.sidebar-layout main#content-area {
     overflow-y: auto;
     max-width: none;
     margin: 0;
+}
+.view-container {
+    /* Set a max-width for content views for better readability on large screens */
+    max-width: 960px;
+    margin: 0 auto;
 }
 
 /* --- 4. Navigation --- */
