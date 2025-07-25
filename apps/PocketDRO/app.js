@@ -825,16 +825,16 @@ class MachineVisualizer {
         this.animate();
     }
 
-    update(machineData) {
+    update(geometryData, labelData) {
         // Clear previous objects
         while (this.sceneObjects.children.length) {
             this.sceneObjects.remove(this.sceneObjects.children[0]);
         }
 
         // Ensure travel dimensions are at least a small positive number for visualization stability.
-        const xTravel = Math.max(machineData.xTravel, 0.001) || 1;
-        const yTravel = Math.max(machineData.yTravel, 0.001) || 1;
-        const zTravel = Math.max(machineData.zTravel, 0.001) || 1;
+        const xTravel = Math.max(geometryData.xTravel, 0.001) || 1;
+        const yTravel = Math.max(geometryData.yTravel, 0.001) || 1;
+        const zTravel = Math.max(geometryData.zTravel, 0.001) || 1;
 
         // 1. Draw Travel Envelope
         // The box dimensions (width, height, depth) must match the world axes.
@@ -847,18 +847,21 @@ class MachineVisualizer {
 
         // 2. Draw Axes
         const axisLength = Math.max(xTravel, yTravel, zTravel) * 0.75;
-        // Machine X-axis is defined as moving 'right' or 'left'.
-        this.addAxis('X', new THREE.Vector3(machineData.positiveX === 'right' ? 1 : -1, 0, 0), axisLength, 0xff0000);
-        // Machine Y-axis is defined as moving 'front' or 'back'. This maps to the world Z-axis.
-        this.addAxis('Y', new THREE.Vector3(0, 0, machineData.positiveY === 'front' ? 1 : -1), axisLength, 0x00ff00);
-        // Machine Z-axis is defined as moving 'up' or 'down'. This maps to the world Y-axis.
-        this.addAxis('Z', new THREE.Vector3(0, machineData.positiveZ === 'up' ? 1 : -1, 0), axisLength, 0x0000ff);
+        // Machine X-axis is defined as moving 'right' or 'left'. This maps to the world X-axis.
+        this.addAxis('X', new THREE.Vector3(geometryData.positiveX === 'right' ? 1 : -1, 0, 0), axisLength, 0xff0000);
+        // Machine Y-axis is defined as moving 'front' or 'back'. This maps to the world Z-axis (towards/away from viewer).
+        this.addAxis('Y', new THREE.Vector3(0, 0, geometryData.positiveY === 'front' ? 1 : -1), axisLength, 0x00ff00);
+        // Machine Z-axis is defined as moving 'up' or 'down'. This maps to the world Y-axis (vertical).
+        this.addAxis('Z', new THREE.Vector3(0, geometryData.positiveZ === 'up' ? 1 : -1, 0), axisLength, 0x0000ff);
 
         // 3. Draw Rotation Indicator
-        this.addRotationIndicator(machineData, axisLength * 0.5);
+        this.addRotationIndicator(geometryData, axisLength * 0.5);
+
+        // 4. Add Dimension Labels
+        this.addDimensionLabels(geometryData, labelData);
     }
 
-    addDimensionLabels(xTravel, yTravel, zTravel) {
+    addDimensionLabels(geometryData, labelData) {
         const createLabel = (text, position) => {
             const div = document.createElement('div');
             // Style directly for simplicity, but a class could also be used.
@@ -874,16 +877,17 @@ class MachineVisualizer {
             this.sceneObjects.add(label);
         };
 
-        // The box is created with (width, height, depth) corresponding to (xTravel, zTravel, yTravel).
-        const halfX = xTravel / 2;
-        const halfY = yTravel / 2; // This is the world Z depth.
-        const halfZ = zTravel / 2; // This is the world Y height.
-        const offset = Math.max(xTravel, yTravel, zTravel) * 0.05; // Small offset to push labels away from the box
+        // Use GEOMETRY data for positioning.
+        const halfX = geometryData.xTravel / 2;
+        const halfY = geometryData.yTravel / 2; // This is the world Z depth.
+        const halfZ = geometryData.zTravel / 2; // This is the world Y height.
+        const offset = Math.max(geometryData.xTravel, geometryData.yTravel, geometryData.zTravel) * 0.05; // Small offset
 
         // Place labels on the edges of the box for clarity.
-        createLabel(`X: ${xTravel}`, new THREE.Vector3(0, -halfZ - offset, halfY)); // Bottom-front edge
-        createLabel(`Y: ${yTravel}`, new THREE.Vector3(-halfX, -halfZ - offset, 0)); // Bottom-left edge
-        createLabel(`Z: ${zTravel}`, new THREE.Vector3(-halfX, 0, halfY)); // Front-left edge
+        // Use LABEL data for the text content.
+        createLabel(`X: ${labelData.xTravel}`, new THREE.Vector3(0, -halfZ - offset, halfY)); // Bottom-front edge
+        createLabel(`Y: ${labelData.yTravel}`, new THREE.Vector3(-halfX, -halfZ - offset, 0)); // Bottom-left edge
+        createLabel(`Z: ${labelData.zTravel}`, new THREE.Vector3(-halfX, 0, halfY)); // Front-left edge
     }
 
     addAxis(label, dir, length, color) {
@@ -1134,8 +1138,7 @@ function setupMachineView() {
         // After programmatically changing values, we must manually update the visualization.
         if (dom.editBtn.hidden && visualizer) { // Check if in edit mode
             const { geometryData, labelData } = getVisualizationData();
-            visualizer.update(geometryData);
-            visualizer.addDimensionLabels(labelData.xTravel, labelData.yTravel, labelData.zTravel);
+            visualizer.update(geometryData, labelData);
         }
 
         // Update the state to reflect the new unit for the next potential change.
@@ -1282,14 +1285,14 @@ function setupMachineView() {
             }
             dom.form.classList.remove('hidden');
             dom.deleteBtn.disabled = false;
+
             setEditMode(false, machine);
             if (visualizer) {
                 // Use the helper to ensure geometry is always in inches,
                 // while labels reflect the current unit. This is critical
                 // for when a machine with metric units is first loaded.
                 const { geometryData, labelData } = getVisualizationData();
-                visualizer.update(geometryData);
-                visualizer.addDimensionLabels(labelData.xTravel, labelData.yTravel, labelData.zTravel);
+                visualizer.update(geometryData, labelData);
                 visualizer.frameScene();
             }
         } else {
@@ -1476,8 +1479,7 @@ function setupMachineView() {
         input.addEventListener('input', () => {
             if (dom.editBtn.hidden && visualizer) { // In edit mode
                 const { geometryData, labelData } = getVisualizationData();
-                visualizer.update(geometryData);
-                visualizer.addDimensionLabels(labelData.xTravel, labelData.yTravel, labelData.zTravel);
+                visualizer.update(geometryData, labelData);
             }
         });
     });
