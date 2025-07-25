@@ -45,6 +45,24 @@
       "endDate": ""
     }
   },
+  "default-machines": {
+    "Default Mill": {
+      "type": "Milling Machine",
+      "description": "Default milling machine configuration.",
+      "inputUnits": "inch",
+      "angleUnits": "degrees",
+      "precision": 3,
+      "xTravel": 10,
+      "yTravel": 5,
+      "zTravel": 4,
+      "positiveX": "right",
+      "positiveY": "front",
+      "positiveZ": "up",
+      "fourthAxis": "x",
+      "positiveRotation": "rhr",
+      "rotationZero": "pos-y"
+    }
+  },
   "model": {
     "inputUnits": "inch",
     "outputUnits": "inch",
@@ -70,32 +88,50 @@
   },
   "machine": {
     "Milling Machine": {
+      "type": "Vertical mill",
+      "description": "Test sample",
       "inputUnits": "inch",
-      "angleUnits": "degrees",
       "precision": 3,
-      "xTravel": 12,
-      "yTravel": 6,
-      "zTravel": 3,
+      "angleUnits": "degrees",
       "positiveX": "right",
       "positiveY": "front",
       "positiveZ": "down",
+      "xTravel": 12,
+      "yTravel": 6,
+      "zTravel": 3,
       "fourthAxis": "z",
       "positiveRotation": "rhr",
-      "rotationZero": "pos-x",
-      "description": "Rong Fu"
+      "rotationZero": "pos-x"
     },
-    "Lathe": {
+    "Bridgeport Vertical Mill": {
+      "type": "Vertical mill",
+      "description": "",
       "inputUnits": "inch",
       "angleUnits": "degrees",
       "precision": 3,
-      "description": "mini lathe",
+      "xTravel": 10,
+      "yTravel": 5,
+      "zTravel": 4,
       "positiveX": "right",
       "positiveY": "front",
       "positiveZ": "up",
-      "xTravel": 10,
-      "yTravel": 6,
-      "zTravel": 3,
       "fourthAxis": "x",
+      "positiveRotation": "rhr",
+      "rotationZero": "pos-y"
+    },
+    "Rong Fu 20": {
+      "type": "Vertical mill",
+      "description": "Round column mill",
+      "inputUnits": "inch",
+      "precision": 3,
+      "angleUnits": "degrees",
+      "positiveX": "right",
+      "positiveY": "front",
+      "positiveZ": "down",
+      "xTravel": 12,
+      "yTravel": 6,
+      "zTravel": 3.5,
+      "fourthAxis": "z",
       "positiveRotation": "rhr",
       "rotationZero": "pos-x"
     }

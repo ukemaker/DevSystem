@@ -271,8 +271,7 @@ nav#sidebar-nav {
 .user-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px; /* Reduced spacing */
-    margin-bottom: 15px;
+    gap: 8px;
 }
 
 /* A simple container for vertically stacking form elements with consistent spacing */
@@ -315,6 +314,13 @@ nav#sidebar-nav {
     gap: 10px;
     justify-content: space-between;
     align-items: center;
+    margin-top: 20px;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 /* Utility class to constrain the width of specific cards */
@@ -327,7 +333,6 @@ nav#sidebar-nav {
     grid-template-columns: 1fr;
     gap: 8px;
     margin-top: 15px; /* Space from project selector */
-    margin-bottom: 15px; /* Space before action buttons */
 }
 
 /* Style for read-only fields to look like disabled inputs for consistency */
@@ -568,4 +573,24 @@ tr:hover {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+}
+
+/* --- 9. Visualization Specific --- */
+.visualization-wrapper {
+    position: relative;
+    width: 100%;
+    /* Maintain a 4:3 aspect ratio */
+    padding-top: 75%;
+    background-color: #f0f0f0; /* A light grey placeholder */
+    border-radius: 4px; /* Match card styling */
+    overflow: hidden; /* Hide anything that might spill out */
+}
+
+#machine-visualization-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block; /* Remove any default bottom margin */
 }
