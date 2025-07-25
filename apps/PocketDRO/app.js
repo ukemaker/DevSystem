@@ -831,10 +831,15 @@ class MachineVisualizer {
             this.sceneObjects.remove(this.sceneObjects.children[0]);
         }
 
-        const { xTravel = 1, yTravel = 1, zTravel = 1 } = machineData;
+        // Ensure travel dimensions are at least a small positive number for visualization stability.
+        const xTravel = Math.max(machineData.xTravel, 0.001) || 1;
+        const yTravel = Math.max(machineData.yTravel, 0.001) || 1;
+        const zTravel = Math.max(machineData.zTravel, 0.001) || 1;
 
         // 1. Draw Travel Envelope
-        const envelopeGeom = new THREE.BoxGeometry(xTravel, yTravel, zTravel);
+        // The box dimensions (width, height, depth) must match the world axes.
+        // Machine X -> World X (width), Machine Z -> World Y (height), Machine Y -> World Z (depth).
+        const envelopeGeom = new THREE.BoxGeometry(xTravel, zTravel, yTravel);
         const envelopeMaterial = new THREE.MeshBasicMaterial({ color: 0x007bff, transparent: true, opacity: 0.1 });
         const envelope = new THREE.Mesh(envelopeGeom, envelopeMaterial);
         const boxHelper = new THREE.BoxHelper(envelope, 0x007bff);
@@ -842,12 +847,43 @@ class MachineVisualizer {
 
         // 2. Draw Axes
         const axisLength = Math.max(xTravel, yTravel, zTravel) * 0.75;
+        // Machine X-axis is defined as moving 'right' or 'left'.
         this.addAxis('X', new THREE.Vector3(machineData.positiveX === 'right' ? 1 : -1, 0, 0), axisLength, 0xff0000);
-        this.addAxis('Y', new THREE.Vector3(0, machineData.positiveY === 'front' ? 1 : -1, 0), axisLength, 0x00ff00);
-        this.addAxis('Z', new THREE.Vector3(0, 0, machineData.positiveZ === 'up' ? 1 : -1), axisLength, 0x0000ff);
+        // Machine Y-axis is defined as moving 'front' or 'back'. This maps to the world Z-axis.
+        this.addAxis('Y', new THREE.Vector3(0, 0, machineData.positiveY === 'front' ? 1 : -1), axisLength, 0x00ff00);
+        // Machine Z-axis is defined as moving 'up' or 'down'. This maps to the world Y-axis.
+        this.addAxis('Z', new THREE.Vector3(0, machineData.positiveZ === 'up' ? 1 : -1, 0), axisLength, 0x0000ff);
 
         // 3. Draw Rotation Indicator
         this.addRotationIndicator(machineData, axisLength * 0.5);
+    }
+
+    addDimensionLabels(xTravel, yTravel, zTravel) {
+        const createLabel = (text, position) => {
+            const div = document.createElement('div');
+            // Style directly for simplicity, but a class could also be used.
+            div.textContent = text;
+            div.style.color = '#333';
+            div.style.fontSize = '12px';
+            div.style.backgroundColor = 'rgba(255, 255, 255, 0.75)';
+            div.style.padding = '2px 4px';
+            div.style.borderRadius = '3px';
+
+            const label = new CSS2DObject(div);
+            label.position.copy(position);
+            this.sceneObjects.add(label);
+        };
+
+        // The box is created with (width, height, depth) corresponding to (xTravel, zTravel, yTravel).
+        const halfX = xTravel / 2;
+        const halfY = yTravel / 2; // This is the world Z depth.
+        const halfZ = zTravel / 2; // This is the world Y height.
+        const offset = Math.max(xTravel, yTravel, zTravel) * 0.05; // Small offset to push labels away from the box
+
+        // Place labels on the edges of the box for clarity.
+        createLabel(`X: ${xTravel}`, new THREE.Vector3(0, -halfZ - offset, halfY)); // Bottom-front edge
+        createLabel(`Y: ${yTravel}`, new THREE.Vector3(-halfX, -halfZ - offset, 0)); // Bottom-left edge
+        createLabel(`Z: ${zTravel}`, new THREE.Vector3(-halfX, 0, halfY)); // Front-left edge
     }
 
     addAxis(label, dir, length, color) {
@@ -862,8 +898,27 @@ class MachineVisualizer {
         labelDiv.style.fontSize = '16px';
 
         const axisLabel = new CSS2DObject(labelDiv);
-        axisLabel.position.copy(dir).multiplyScalar(length * 1.1);
+        axisLabel.position.copy(dir).multiplyScalar(length * 1.05);
         this.sceneObjects.add(axisLabel);
+    }
+
+    frameScene() {
+        if (this.sceneObjects.children.length === 0) return;
+
+        const box = new THREE.Box3().setFromObject(this.sceneObjects);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = this.camera.fov * (Math.PI / 180);
+        // Calculate the distance the camera needs to be to fit the object in view.
+        let distance = Math.abs(maxDim / (2 * Math.tan(fov / 2)));
+        
+        distance *= 1.5; // Add some padding so it doesn't touch the edges
+
+        // Position camera at a nice diagonal angle from the center
+        this.camera.position.set(center.x + distance, center.y + distance, center.z + distance);
+        this.controls.target.copy(center);
     }
 
     addRotationIndicator(data, radius) {
@@ -877,35 +932,42 @@ class MachineVisualizer {
         const rotationAxis = axisMap[data.fourthAxis];
         if (!rotationAxis) return;
 
-        // Create the circular path (torus)
-        const tubeRadius = radius * 0.03;
-        const torusGeom = new THREE.TorusGeometry(radius, tubeRadius, 16, 100);
-        const torusMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-        const torus = new THREE.Mesh(torusGeom, torusMat);
-
-        // Align the torus to be perpendicular to the rotation axis
-        const upVector = new THREE.Vector3(0, 0, 1); // Default orientation of torus
-        torus.quaternion.setFromUnitVectors(upVector, rotationAxis);
-        this.sceneObjects.add(torus);
-
-        // Create the arrow
         const zeroVector = zeroMap[data.rotationZero];
         if (!zeroVector) return;
 
         // Check if zeroVector is parallel to rotationAxis. If so, can't draw arrow.
         if (Math.abs(zeroVector.dot(rotationAxis)) > 0.99) return;
 
-        const arrowOrigin = zeroVector.clone().multiplyScalar(radius);
+        const rotationIndicatorGroup = new THREE.Group();
 
-        // Determine arrow direction using cross product (Right-Hand Rule)
-        let arrowDirection = new THREE.Vector3().crossVectors(rotationAxis, zeroVector).normalize();
-        if (data.positiveRotation === 'lhr') {
-            arrowDirection.negate(); // Reverse for Left-Hand Rule
-        }
+        const tubeRadius = radius * 0.03;
+        const isLHR = data.positiveRotation === 'lhr';
 
+        // 1. Create the arc geometry (a 90-degree segment)
+        const curve = new THREE.ArcCurve(0, 0, radius, 0, Math.PI / 2, false);
+        const arcGeom = new THREE.TubeGeometry(curve, 20, tubeRadius, 8, false);
+        const arcMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+        const arcMesh = new THREE.Mesh(arcGeom, arcMat);
+
+        // 2. Create the arrow helper at the start of the arc
+        const arrowOrigin = new THREE.Vector3(radius, 0, 0); // Start of arc is on local X
+        const arrowDirection = new THREE.Vector3(0, 1, 0);   // Tangent is along local Y
         const arrowLength = radius * 0.4;
         const arrow = new THREE.ArrowHelper(arrowDirection, arrowOrigin, arrowLength, 0xdc3545, arrowLength * 0.4, arrowLength * 0.2);
-        this.sceneObjects.add(arrow);
+
+        rotationIndicatorGroup.add(arcMesh, arrow);
+
+        // 3. Orient the entire group to match the machine settings
+        // The group's local X-axis should align with `zeroVector`.
+        // The group's local Z-axis should align with `rotationAxis`.
+        const localZ = isLHR ? rotationAxis.clone().negate() : rotationAxis.clone();
+        const localX = zeroVector.clone();
+        const localY = new THREE.Vector3().crossVectors(localZ, localX); // Z x X = Y
+        const matrix = new THREE.Matrix4();
+        matrix.makeBasis(localX, localY, localZ);
+        rotationIndicatorGroup.quaternion.setFromRotationMatrix(matrix);
+
+        this.sceneObjects.add(rotationIndicatorGroup);
     }
 
     dispose() {
@@ -987,6 +1049,11 @@ function setupMachineView() {
 
     // --- Formatting and Conversion Utilities (Agnostic) ---
 
+    // Helper to convert kebab-case strings to camelCase (e.g., 'positive-z' -> 'positiveZ')
+    function kebabToCamel(s) {
+        return s.replace(/-./g, x => x.charAt(1).toUpperCase());
+    }
+
     const INCH_TO_MM = 25.4;
 
     /**
@@ -1064,6 +1131,13 @@ function setupMachineView() {
             }
         });
 
+        // After programmatically changing values, we must manually update the visualization.
+        if (dom.editBtn.hidden && visualizer) { // Check if in edit mode
+            const { geometryData, labelData } = getVisualizationData();
+            visualizer.update(geometryData);
+            visualizer.addDimensionLabels(labelData.xTravel, labelData.yTravel, labelData.zTravel);
+        }
+
         // Update the state to reflect the new unit for the next potential change.
         previousLinearUnit = newUnit;
     }
@@ -1085,15 +1159,34 @@ function setupMachineView() {
     function getMachineDataFromForm() {
         const data = {};
         allFormInputs.forEach(input => {
-            const key = input.id.replace('machine-', '');
+            const kebabKey = input.id.replace('machine-', '');
+            const camelKey = kebabToCamel(kebabKey);
             let value = input.value;
             if (input.type === 'number') value = Number(value) || 0;
-            data[key] = value;
+            data[camelKey] = value;
         });
         return data;
     }
 
-    function setEditMode(isEditing) {
+    /**
+     * Prepares data for the visualizer.
+     * Geometry is always in inches for stable sizing.
+     * Labels are in the currently selected unit.
+     */
+    function getVisualizationData() {
+        const labelData = getMachineDataFromForm();
+        const geometryData = { ...labelData };
+
+        if (labelData.inputUnits === 'metric') {
+            geometryData.xTravel = convertLinear(labelData.xTravel, 'metric', 'inch');
+            geometryData.yTravel = convertLinear(labelData.yTravel, 'metric', 'inch');
+            geometryData.zTravel = convertLinear(labelData.zTravel, 'metric', 'inch');
+        }
+        
+        return { geometryData, labelData };
+    }
+
+    function setEditMode(isEditing, machineData = null) {
         allFormInputs.forEach(input => input.disabled = !isEditing);
         dom.editBtn.hidden = isEditing;
         dom.saveBtn.hidden = !isEditing;
@@ -1111,12 +1204,16 @@ function setupMachineView() {
         }
 
         if (!isEditing) {
-            // When entering view mode, format the travel fields based on the precision setting.
-            const precision = dom.precision.value;
+            // When entering view mode, format the travel fields based on the precision setting from the data model.
+            // This is more robust than reading the value from the DOM, which might not be populated yet.
+            const data = machineData || originalMachineData;
+            const precision = data.precision ?? getDefaultPrecision(data.inputUnits);
             const travelFields = [dom.xTravel, dom.yTravel, dom.zTravel];
     
             travelFields.forEach(field => {
-                field.value = formatNumber(field.value, precision);
+                if (field.value) { // Only format if there's a value
+                    field.value = formatNumber(field.value, precision);
+                }
             });
         }
     }
@@ -1150,11 +1247,34 @@ function setupMachineView() {
         const machine = allMachines[machineName];
         if (machine) {
             originalMachineData = JSON.parse(JSON.stringify(machine)); // Deep copy for cancellation
-            Object.keys(dom).forEach(key => {
-                if (dom[key] && dom[key].nodeName !== 'BUTTON' && machine.hasOwnProperty(key)) {
-                    dom[key].value = machine[key];
+
+            // More robustly populate the form by iterating over the cached form inputs.
+            // This is more explicit and safer than iterating over the `dom` object keys.
+            allFormInputs.forEach(input => {
+                const camelKey = kebabToCamel(input.id.replace('machine-', ''));
+                if (machine.hasOwnProperty(camelKey)) {
+                    const valueToSet = machine[camelKey];
+                    
+                    if (input.tagName === 'SELECT') {
+                        // For dropdowns, check if the value is a valid option.
+                        const optionExists = [...input.options].some(opt => opt.value == valueToSet);
+                        if (optionExists) {
+                            input.value = valueToSet;
+                        } else {
+                            // If the saved value is not a valid option, default to the first one to prevent an invalid state.
+                            console.warn(`Invalid value "${valueToSet}" for dropdown "${input.id}". Defaulting to first option.`);
+                            input.selectedIndex = 0;
+                        }
+                    } else {
+                        // For other inputs (text, number, textarea), just set the value.
+                        input.value = valueToSet;
+                    }
+                } else {
+                    // If the data doesn't exist for a field, clear it to prevent stale data.
+                    input.value = '';
                 }
             });
+
             // Handle case where precision might not be in the data for older machine configs
             if (machine.precision === undefined) {
                 dom.precision.value = getDefaultPrecision(machine.inputUnits);
@@ -1162,9 +1282,15 @@ function setupMachineView() {
             }
             dom.form.classList.remove('hidden');
             dom.deleteBtn.disabled = false;
-            setEditMode(false);
+            setEditMode(false, machine);
             if (visualizer) {
-                visualizer.update(machine);
+                // Use the helper to ensure geometry is always in inches,
+                // while labels reflect the current unit. This is critical
+                // for when a machine with metric units is first loaded.
+                const { geometryData, labelData } = getVisualizationData();
+                visualizer.update(geometryData);
+                visualizer.addDimensionLabels(labelData.xTravel, labelData.yTravel, labelData.zTravel);
+                visualizer.frameScene();
             }
         } else {
             // No machine selected or found, hide the form
@@ -1224,12 +1350,13 @@ function setupMachineView() {
         // A robust way to gather data is to iterate the cached inputs
         // and use their ID to map to a property name.
         allFormInputs.forEach(input => {
-            const key = input.id.replace('machine-', ''); // e.g., 'machine-x-travel' -> 'xTravel'
+            const kebabKey = input.id.replace('machine-', ''); // e.g., 'machine-x-travel'
+            const camelKey = kebabToCamel(kebabKey); // -> 'xTravel'
             let value = input.value;
             if (input.type === 'number' && value.trim() !== '' && !isNaN(Number(value))) {
                 value = Number(value);
             }
-            updatedMachineData[key] = value;
+            updatedMachineData[camelKey] = value;
         });
 
         try {
@@ -1242,7 +1369,6 @@ function setupMachineView() {
 
             // Reload all data to ensure UI consistency after the save.
             await loadAllMachineData(); // Reload everything to reflect changes
-            setEditMode(false);
 
         } catch (error) {
             console.error('Failed to save machine:', error);
@@ -1251,15 +1377,9 @@ function setupMachineView() {
     }
 
     function handleCancel() {
-        // Revert form to the state it was in before "Edit" was clicked.
-        if (originalMachineData) {
-            Object.keys(dom).forEach(key => {
-                if (dom[key] && dom[key].nodeName !== 'BUTTON' && originalMachineData.hasOwnProperty(key)) {
-                    dom[key].value = originalMachineData[key];
-                }
-            });
-        }
-        setEditMode(false);
+        // Revert form to the state it was in before "Edit" was clicked by reloading its data.
+        // This is the simplest and most reliable way to cancel changes.
+        updateFormForMachine(activeMachineName);
     }
 
     async function handleDelete() {
@@ -1338,13 +1458,26 @@ function setupMachineView() {
         e.preventDefault();
         handleSave();
     });
+
+    // --- Debugging for form validation ---
+    // This listener will fire when the browser finds an invalid field
+    // upon a form submission attempt (e.g., clicking the "Save" button).
+    // It will log the specific element that is causing the validation to fail.
+    dom.form.addEventListener('invalid', (e) => {
+        console.error('Form validation failed for:', e.target);
+        // You can inspect e.target.id, e.target.value, and e.target.validity
+        // in the console to understand why the browser considers it invalid.
+    }, true); // Use capture phase to catch the event as it propagates down.
+
     dom.inputUnits.addEventListener('change', handleUnitChange);
     dom.precision.addEventListener('change', handlePrecisionChange);
     // Add listeners for live visualization updates
     allFormInputs.forEach(input => {
-        input.addEventListener('change', () => {
+        input.addEventListener('input', () => {
             if (dom.editBtn.hidden && visualizer) { // In edit mode
-                visualizer.update(getMachineDataFromForm());
+                const { geometryData, labelData } = getVisualizationData();
+                visualizer.update(geometryData);
+                visualizer.addDimensionLabels(labelData.xTravel, labelData.yTravel, labelData.zTravel);
             }
         });
     });

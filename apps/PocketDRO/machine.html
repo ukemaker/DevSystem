@@ -79,15 +79,15 @@
                 <div class="form-row">
                     <div class="form-field">
                         <label for="machine-x-travel">X Travel</label>
-                        <input type="number" id="machine-x-travel" placeholder="e.g., 200" disabled>
+                        <input type="number" id="machine-x-travel" step="any" placeholder="e.g., 200" disabled>
                     </div>
                     <div class="form-field">
                         <label for="machine-y-travel">Y Travel</label>
-                        <input type="number" id="machine-y-travel" placeholder="e.g., 200" disabled>
+                        <input type="number" id="machine-y-travel" step="any" placeholder="e.g., 200" disabled>
                     </div>
                     <div class="form-field">
                         <label for="machine-z-travel">Z Travel</label>
-                        <input type="number" id="machine-z-travel" placeholder="e.g., 50" disabled>
+                        <input type="number" id="machine-z-travel" step="any" placeholder="e.g., 50" disabled>
                     </div>
                 </div>
                 <div class="form-row">
@@ -134,7 +134,7 @@
         <div class="card-header">
             <h2>Coordinate System Visualization</h2>
         </div>
-        <div style="display: flex; justify-content: center; align-items: center; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">
+        <div style="display: flex; justify-content: center; align-items: center; background-color: #f8f9fa; padding: 10px; border-radius: 4px; position: relative;">
             <canvas id="machine-visualization-canvas" width="400" height="300" style="border: 1px solid var(--border-color); background-color: #fff;"></canvas>
         </div>
     </div>
