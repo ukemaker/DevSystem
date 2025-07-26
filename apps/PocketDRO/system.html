@@ -54,6 +54,26 @@
 
 <div class="card card-constrained">
     <div class="card-header">
+        <h2>Printer Specifications</h2>
+    </div>
+    <form id="printer-specs-form">
+        <div class="form-field">
+            <label for="printer-dpi">Printer DPI</label>
+            <input type="number" id="printer-dpi" placeholder="e.g., 300" disabled>
+        </div>
+        <div class="form-actions">
+            <div class="button-group">
+                <button type="button" id="edit-printer-specs-btn" class="btn-primary">Edit</button>
+                <button type="submit" id="save-printer-specs-btn" class="btn-primary" disabled hidden>Save Changes</button>
+                <button type="button" id="cancel-printer-edit-btn" disabled hidden>Cancel</button>
+            </div>
+        </div>
+        <p id="printer-specs-status" role="status" aria-live="polite" class="hidden"></p>
+    </form>
+</div>
+
+<div class="card card-constrained">
+    <div class="card-header">
         <h2>Data Backup & Restore</h2>
     </div>
     <div class="form-actions">

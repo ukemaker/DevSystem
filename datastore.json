@@ -16,7 +16,8 @@
     "state": "CA",
     "phone": "5108598532",
     "activeProjectName": "PocketDRO",
-    "activeMachineName": "Bridgeport Vertical Mill"
+    "activeMachineName": "Bridgeport Vertical Mill",
+    "dpi": "1200"
   },
   "default-system": {
     "name": "Michael DaSilva",
@@ -62,29 +63,6 @@
       "positiveRotation": "rhr",
       "rotationZero": "pos-y"
     }
-  },
-  "model": {
-    "inputUnits": "inch",
-    "outputUnits": "inch",
-    "minX": "-100",
-    "maxX": "100",
-    "minY": "-100",
-    "maxY": "100",
-    "minZ": "-50",
-    "maxZ": "0",
-    "positiveZ": "down",
-    "angleUnits": "degrees",
-    "fourthAxis": "x"
-  },
-  "default-model": {
-    "inputUnits": "inch",
-    "outputUnits": "inch",
-    "minX": "-100",
-    "maxX": "100",
-    "minY": "-100",
-    "maxY": "100",
-    "minZ": "-50",
-    "maxZ": "0"
   },
   "machine": {
     "Milling Machine": {

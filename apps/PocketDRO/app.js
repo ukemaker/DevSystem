@@ -14,8 +14,7 @@ const navButtons = {
     'calc-conv': document.getElementById('nav-calc-conv'),
     // Settings Submenu
     'system': document.getElementById('nav-system'),
-    'machine': document.getElementById('nav-machine'),
-    'output': document.getElementById('nav-output'),
+    'machines': document.getElementById('nav-machines'),
     'program': document.getElementById('nav-program'),
 };
 const settingsToggle = document.getElementById('nav-settings-toggle');
@@ -109,8 +108,7 @@ const viewInitializers = {
     'program': setupProgramView,
     'projects': setupProjectsView,
     'system': setupSystemView,
-    'machine': setupMachineView,
-    'output': setupOutputView,
+    'machines': setupMachinesView,
 };
 
 async function loadView(viewName, onLoadCallback = null) {
@@ -245,32 +243,9 @@ async function handleResetToDefaults() {
     }
 }
 
-// --- Output Settings View ---
-function setupOutputView() {
-    console.log(`[setupOutputView] START.`);
-    return null; // No teardown needed for this simple view
-}
 // --- System Settings View ---
 function setupSystemView() {
     console.log(`[setupSystemView] START. currentView is: '${currentView}'.`);
-    const dom = {
-        form: document.getElementById('user-info-form'),
-        inputs: document.querySelectorAll('#user-info-form input[id]'),
-        editBtn: document.getElementById('edit-user-info-btn'),
-        saveBtn: document.getElementById('save-user-info-btn'),
-        cancelBtn: document.getElementById('cancel-user-edit-btn'),
-        status: document.getElementById('user-info-status'),
-
-        // Backup and Restore elements
-        backupDataBtn: document.getElementById('backup-data-btn'),
-        restoreDataInput: document.getElementById('restore-data-input'),
-        resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
-        backupStatus: document.getElementById('backup-status'),
-
-    };
-
-    const moduleName = 'system';
-    let originalData = {}; // To store the initial state for dirty checking for the user form
 
     // Generic status message helper
     function showStatusMessage(element, message, isError = false, duration = 3000) {
@@ -281,117 +256,136 @@ function setupSystemView() {
         setTimeout(() => { element.classList.add('hidden'); }, duration);
     }
 
-    // Gets current data from the form fields
-    function getFormData() {
-        const data = {};
-        dom.inputs.forEach(input => {
-            const key = input.id.replace('user-', '');
-            data[key] = input.value;
-        });
-        return data;
-    }
+    /**
+     * Creates a controller for a form within the System view.
+     * This encapsulates the logic for loading, saving, and managing the state of a form.
+     * @param {string} formId The ID of the form element.
+     * @param {string} idPrefix The prefix used on the input IDs (e.g., 'user-').
+     * @returns {object} An object with methods to manage the form.
+     */
+    function createFormController(formId, idPrefix) {
+        const form = document.getElementById(formId);
+        if (!form) return null;
 
-    // Compares current form data to the originally loaded data
-    function isFormDirty() {
-        const currentData = getFormData();
-        const dirty = Object.keys(originalData).some(key => {
-            // Use strict inequality to avoid type coercion issues (e.g., 5 != "5" is false).
-            return String(originalData[key]) !== String(currentData[key]);
-        });
-        return dirty;
-    }
+        const dom = {
+            form,
+            inputs: form.querySelectorAll(`input[id^="${idPrefix}"]`),
+            editBtn: form.querySelector(`button[id^="edit-${idPrefix}"]`),
+            saveBtn: form.querySelector(`button[id^="save-${idPrefix}"]`),
+            cancelBtn: form.querySelector(`button[id^="cancel-${idPrefix}"]`),
+            status: form.querySelector(`p[id^="${idPrefix}"]`),
+        };
 
-    // Toggles the UI between viewing and editing states
-    function setEditMode(isEditing) {
-        dom.inputs.forEach(input => (input.disabled = !isEditing));        
-        // Toggle visibility of buttons
-        dom.editBtn.hidden = isEditing;
-        dom.saveBtn.hidden = !isEditing;
-        dom.cancelBtn.hidden = !isEditing;
+        let originalData = {};
 
-        // Enable/disable buttons
-        dom.saveBtn.disabled = !isEditing;
-        dom.cancelBtn.disabled = !isEditing;
-
-        if (isEditing && dom.inputs.length > 0) {
-            dom.inputs[0].focus(); // Focus the first input field for better UX
-        }
-    }
-
-    async function loadUserData() {
-        try {
-            originalData = {}; // Clear previous original data
-            // Create a promise for each field to be loaded from the data store
-            const loadPromises = Array.from(dom.inputs).map(async (input) => {
-                const key = input.id.replace('user-', '');
-                const value = await dataManager.getItem(moduleName, key) || '';
-                input.value = value;
-                originalData[key] = value; // Store the pristine value
+        const getFormData = () => {
+            const data = {};
+            dom.inputs.forEach(input => {
+                const key = input.id.replace(idPrefix, '');
+                data[key] = input.value;
             });
-            await Promise.all(loadPromises); // Wait for all fields to load
+            return data;
+        };
+
+        const setEditMode = (isEditing) => {
+            dom.inputs.forEach(input => (input.disabled = !isEditing));
+            dom.editBtn.hidden = isEditing;
+            dom.saveBtn.hidden = !isEditing;
+            dom.cancelBtn.hidden = !isEditing;
+            dom.saveBtn.disabled = !isEditing;
+            dom.cancelBtn.disabled = !isEditing;
+            if (isEditing && dom.inputs.length > 0) dom.inputs[0].focus();
+        };
+
+        const loadData = async () => {
+            try {
+                originalData = {};
+                const loadPromises = Array.from(dom.inputs).map(async (input) => {
+                    const key = input.id.replace(idPrefix, '');
+                    const value = await dataManager.getItem('system', key) || '';
+                    input.value = value;
+                    originalData[key] = value;
+                });
+                await Promise.all(loadPromises);
+                setEditMode(false);
+            } catch (error) {
+                console.error(`Failed to load data for ${formId}:`, error);
+                showStatusMessage(dom.status, 'Error loading data.', true);
+            }
+        };
+
+        const save = async () => {
+            const currentData = getFormData();
+            const savePromises = Object.entries(currentData).map(([key, formValue]) => {
+                return dataManager.setItem('system', key, formValue.trim());
+            });
+            await Promise.all(savePromises);
+            originalData = { ...currentData };
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+        };
+
+        const handleSave = async () => {
+            try {
+                await save();
+                showStatusMessage(dom.status, 'Settings saved successfully!');
+                setEditMode(false);
+            } catch (error) {
+                console.error(`Failed to save data for ${formId}:`, error);
+                showStatusMessage(dom.status, `Error saving data: ${error.message}`, true);
+            }
+        };
+
+        const handleCancel = () => {
+            dom.inputs.forEach(input => {
+                const key = input.id.replace(idPrefix, '');
+                input.value = originalData[key] || '';
+            });
             setEditMode(false);
-        } catch (error) {
-            console.error('Failed to load user data:', error);
-            showStatusMessage(dom.status, 'Error loading user data.', true);
-        }
-    }
+        };
 
-    // Saves the user form data to the data store and resets its dirty state.
-    async function saveUserForm() {
-        const currentData = getFormData();
-        const savePromises = Object.entries(currentData).map(([key, formValue]) => {
-            return dataManager.setItem(moduleName, key, formValue.trim());
+        dom.editBtn.addEventListener('click', () => setEditMode(true));
+        dom.cancelBtn.addEventListener('click', handleCancel);
+        dom.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleSave();
         });
-        await Promise.all(savePromises);
-        originalData = { ...currentData }; // Update the pristine state
-        globalState.isDirty = true;
-        updateGlobalDirtyStatusUI();
+
+        loadData();
+
+        return {
+            isDirty: () => Object.keys(originalData).some(key => String(originalData[key]) !== String(getFormData()[key])),
+            save,
+        };
     }
 
-    async function handleSave() {
-        try {
-            await saveUserForm();
-            showStatusMessage(dom.status, 'User data saved successfully!');
-            setEditMode(false);
-        } catch (error) {
-            console.error('Failed to save user data:', error);
-            showStatusMessage(dom.status, `Error saving data: ${error.message}`, true);
-        }
-    }
+    // --- Initialize Controllers ---
+    const formControllers = [
+        createFormController('user-info-form', 'user-'),
+        createFormController('printer-specs-form', 'printer-'),
+    ].filter(Boolean); // Filter out nulls if a form doesn't exist
 
-    function handleCancel() {
-        // Revert form to original data without a network request
-        dom.inputs.forEach(input => {
-            const key = input.id.replace('user-', '');
-            input.value = originalData[key] || '';
-        });
-        setEditMode(false);
-    }
+    // --- Global Backup/Restore Listeners for this View ---
+    const backupDataBtn = document.getElementById('backup-data-btn');
+    const restoreDataInput = document.getElementById('restore-data-input');
+    const resetDefaultsBtn = document.getElementById('reset-defaults-btn');
+    const backupStatus = document.getElementById('backup-status');
 
-    // Attach Event Listeners
-    dom.editBtn.addEventListener('click', () => setEditMode(true));
-    dom.cancelBtn.addEventListener('click', handleCancel);
-    dom.form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        handleSave();
-    });
-
-    // User Data File Listeners
-    if (dom.backupDataBtn) {
-        dom.backupDataBtn.addEventListener('click', async (event) => {
+    if (backupDataBtn) {
+        backupDataBtn.addEventListener('click', async (event) => {
             console.log(`%c[Save To File] Process Started. currentView is: '${currentView}'.`, 'color: blue; font-weight: bold;');
             event.preventDefault(); // Prevent any default browser action
             event.stopPropagation(); // Stop the event from bubbling up
             try {
-                // If the user form has pending changes, save them to the data store first
-                // to ensure the exported file reflects what the user sees on screen.
-                if (isFormDirty()) {
-                    console.log('[Save To File] User form is dirty. Saving changes...');
-                    await saveUserForm();
-                    console.log('[Save To File] User form saved successfully.');
-                } else {
-                    console.log('[Save To File] User form is clean. No changes to save.');
-                }
+                // Save any dirty forms before exporting
+                const savePromises = formControllers.map(controller => {
+                    if (controller.isDirty()) {
+                        console.log(`[Save To File] Form is dirty. Saving changes...`);
+                        return controller.save();
+                    }
+                    return Promise.resolve();
+                });
+                await Promise.all(savePromises);
 
                 // Now that the data store is fully up-to-date, export it.
                 console.log('[Save To File] Exporting data to file...');
@@ -401,17 +395,17 @@ function setupSystemView() {
                 // The application state is now in sync with the saved file.
                 console.log('[Save To File] Updating global state to clean.');
                 globalState.isDirty = false;
-                updateGlobalDirtyStatusUI(); // Update any relevant UI indicators
-                showStatusMessage(dom.backupStatus, 'File saved and unsaved changes cleared.');
+                updateGlobalDirtyStatusUI();
+                showStatusMessage(backupStatus, 'File saved and unsaved changes cleared.');
                 console.log('%c[Save To File] Process Finished Successfully.', 'color: green; font-weight: bold;');
             } catch (error) {
                 console.error('[Save To File] An error occurred during the process:', error);
-                showStatusMessage(dom.backupStatus, 'Error exporting data.', true);
+                showStatusMessage(backupStatus, 'Error exporting data.', true);
             }
         });
     }
-    if (dom.restoreDataInput) {
-        dom.restoreDataInput.addEventListener('change', async (event) => {
+    if (restoreDataInput) {
+        restoreDataInput.addEventListener('change', async (event) => {
             if (!event.target.files || event.target.files.length === 0) return;
             try {
                 await handleGlobalImport(event);
@@ -428,12 +422,12 @@ function setupSystemView() {
                 });
             } catch (error) {
                 console.error('Failed to import data:', error);
-                showStatusMessage(dom.backupStatus, `Error: ${error.message}`, true, 5000);
+                showStatusMessage(backupStatus, `Error: ${error.message}`, true, 5000);
             }
         });
     }
-    if (dom.resetDefaultsBtn) {
-        dom.resetDefaultsBtn.addEventListener('click', async () => {
+    if (resetDefaultsBtn) {
+        resetDefaultsBtn.addEventListener('click', async () => {
             try {
                 const wasReset = await handleResetToDefaults();
                 if (wasReset) {
@@ -450,24 +444,21 @@ function setupSystemView() {
                 }
                 // If wasReset is false, the user cancelled the confirm dialog, so do nothing.
             } catch (error) {
-                showStatusMessage(dom.backupStatus, `Error resetting data: ${error.message}`, true, 5000);
+                showStatusMessage(backupStatus, `Error resetting data: ${error.message}`, true, 5000);
             }
         });
     }
 
-    // Initial Load
-    loadUserData();
     console.log(`[setupSystemView] END. currentView is: '${currentView}'.`);
 
     // Return a "teardown" function to be called before navigating away
     return () => {
         console.log(`[Teardown Guard] Checking for unsaved changes in 'system' view.`);
-        if (isFormDirty()) {
+        if (formControllers.some(c => c.isDirty())) {
             console.warn(`[Teardown Guard] Form is dirty. Prompting user.`);
-            return confirm('You have unsaved changes for the User. Are you sure you want to leave?');
+            return confirm('You have unsaved changes. Are you sure you want to leave?');
         }
         console.log(`[Teardown Guard] Form is clean. Allowing navigation.`);
-        // We don't need a guard for project changes because they save immediately or have their own cancel flow.
         return true; // OK to navigate away
     };
 }
@@ -1062,8 +1053,8 @@ class MachineVisualizer {
 
 // --- Machines View ---
 // --- Machines View ---
-function setupMachineView() {
-    console.log(`[setupMachineView] START.`);
+function setupMachinesView() {
+    console.log(`[setupMachinesView] START.`);
     // --- DOM Cache ---
     const dom = {
         // Machine selection
@@ -1386,7 +1377,7 @@ function setupMachineView() {
         }
     }
 
-    async function loadAllMachineData() {
+    async function loadAllMachinesData() {
         try {
             const data = await dataManager.getAllItems();
             allMachines = data.machine || {};
@@ -1398,7 +1389,7 @@ function setupMachineView() {
             }
 
             populateSelector();
-            updateFormForMachine(activeMachineName);
+            updateFormForMachine(activeMachineName); // This function name is generic enough to keep
         } catch (error) {
             console.error('Failed to load machine data:', error);
             showStatus('Error loading machine data.', true);
@@ -1451,7 +1442,7 @@ function setupMachineView() {
             showStatus('Machine saved successfully.');
 
             // Reload all data to ensure UI consistency after the save.
-            await loadAllMachineData(); // Reload everything to reflect changes
+            await loadAllMachinesData(); // Reload everything to reflect changes
 
         } catch (error) {
             console.error('Failed to save machine:', error);
@@ -1482,7 +1473,7 @@ function setupMachineView() {
             globalState.isDirty = true;
             updateGlobalDirtyStatusUI();
             showStatus(`Machine "${activeMachineName}" deleted.`);
-            await loadAllMachineData(); // Reload to update UI
+            await loadAllMachinesData(); // Reload to update UI
 
         } catch (error) {
             console.error('Failed to delete machine:', error);
@@ -1526,7 +1517,7 @@ function setupMachineView() {
             updateGlobalDirtyStatusUI();
             showStatus('New machine added.');
             closeAddModal();
-            await loadAllMachineData();
+            await loadAllMachinesData();
         } catch (error) {
             console.error('Failed to add machine:', error);
             showStatus('Error adding new machine.', true);
@@ -1596,8 +1587,8 @@ function setupMachineView() {
         visualizer = new MachineVisualizer(dom.visualizationCanvas);
         visualizer.init();
     }
-    loadAllMachineData();
-    console.log(`[setupMachineView] END.`);
+    loadAllMachinesData();
+    console.log(`[setupMachinesView] END.`);
 
     return () => {
         // Teardown guard

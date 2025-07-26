@@ -2,13 +2,13 @@
     <h1>Projects</h1>
 
     <div class="card card-constrained">
-        <div class="card-header">
-            <h2>Active Project</h2>
-            <button type="button" id="add-project-btn" class="btn-primary">Add New Project</button>
-        </div>
         <div class="form-field">
             <label for="project-selector">Project</label>
             <select id="project-selector" name="project-selector"></select>
+        </div>
+        <div class="form-actions">
+            <button type="button" id="add-project-btn" class="btn-primary">Add New Project</button>
+            <button type="button" id="delete-project-btn" class="btn-danger" disabled hidden>Delete Project</button>
         </div>
     </div>
 
@@ -46,7 +46,6 @@
                     <button type="submit" id="save-project-btn" class="btn-primary" disabled hidden>Save Project</button>
                     <button type="button" id="cancel-project-btn" disabled hidden>Cancel</button>
                 </div>
-                <button type="button" id="delete-project-btn" class="btn-danger" disabled hidden>Delete</button>
             </div>
             <p id="project-status-message" role="status" aria-live="polite" class="hidden"></p>
         </div>
