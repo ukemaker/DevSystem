@@ -10,6 +10,7 @@ const navButtons = {
     'bolt-hole-circle': document.getElementById('nav-bolt-hole-circle'),
     'line-holes': document.getElementById('nav-line-holes'),
     'arc-milling': document.getElementById('nav-arc-milling'),
+    'projects': document.getElementById('nav-projects'),
     'calc-conv': document.getElementById('nav-calc-conv'),
     // Settings Submenu
     'system': document.getElementById('nav-system'),
@@ -106,6 +107,7 @@ async function handleGlobalImport(event) {
 // Map view names to their setup functions for scalability
 const viewInitializers = {
     'program': setupProgramView,
+    'projects': setupProjectsView,
     'system': setupSystemView,
     'machine': setupMachineView,
     'output': setupOutputView,
@@ -153,9 +155,18 @@ async function loadView(viewName, onLoadCallback = null) {
         currentViewTeardown = null;
         console.log(`[loadView] Teardown reset. currentView is: '${currentView}'.`);
         
-        // Update active nav button
+        // Update active nav button and expand parent submenu if necessary
         document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`nav-${viewName}`).classList.add('active');
+        const activeButton = document.getElementById(`nav-${viewName}`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+            const navGroup = activeButton.closest('.nav-group');
+            if (navGroup && !navGroup.classList.contains('expanded')) {
+                navGroup.classList.add('expanded');
+                const toggle = navGroup.querySelector('[aria-controls]');
+                if (toggle) toggle.setAttribute('aria-expanded', 'true');
+            }
+        }
         
         // Run the setup function for the loaded view if it exists
         if (viewInitializers[viewName]) {
@@ -256,32 +267,10 @@ function setupSystemView() {
         resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
         backupStatus: document.getElementById('backup-status'),
 
-        // Project section elements
-        projectSelector: document.getElementById('project-selector'),
-        projectDetailsForm: document.getElementById('project-details-form'),
-        projectStatus: document.getElementById('project-status'), // now a select
-        projectStartDate: document.getElementById('project-start-date'), // now an input
-        projectEndDate: document.getElementById('project-end-date'), // now an input
-        projectDescription: document.getElementById('project-description'),
-        projectInputs: document.querySelectorAll('#project-details-form input, #project-details-form select, #project-details-form textarea'),
-        editProjectBtn: document.getElementById('edit-project-btn'),
-        saveProjectBtn: document.getElementById('save-project-btn'),
-        cancelProjectBtn: document.getElementById('cancel-project-btn'),
-        deleteProjectBtn: document.getElementById('delete-project-btn'),
-        addProjectBtn: document.getElementById('add-project-btn'),
-
-        // Modal elements are global but managed here
-        addProjectModal: document.getElementById('add-project-modal'),
-        addProjectForm: document.getElementById('add-project-form'),
-        modalCloseBtn: document.getElementById('modal-close-btn'),
-        modalCancelBtn: document.getElementById('modal-cancel-btn'),
     };
 
     const moduleName = 'system';
-    let originalData = {}; // To store the initial state for dirty checking
-    let allProjects = {};
-    let activeProjectName = null;
-    let originalProjectData = {}; // For canceling project edits
+    let originalData = {}; // To store the initial state for dirty checking for the user form
 
     // Generic status message helper
     function showStatusMessage(element, message, isError = false, duration = 3000) {
@@ -379,273 +368,6 @@ function setupSystemView() {
         setEditMode(false);
     }
 
-    function setProjectEditMode(isEditing) {
-        if (!dom.projectInputs) return;
-        dom.projectInputs.forEach(input => input.disabled = !isEditing);
-
-        // Toggle visibility of buttons
-        dom.editProjectBtn.hidden = isEditing;
-        dom.saveProjectBtn.hidden = !isEditing;
-        dom.cancelProjectBtn.hidden = !isEditing;
-
-        // Enable/disable buttons
-        dom.saveProjectBtn.disabled = !isEditing;
-        dom.cancelProjectBtn.disabled = !isEditing;
-
-        // Disable project selector and add button while editing
-        dom.projectSelector.disabled = isEditing;
-        dom.addProjectBtn.disabled = isEditing;
-        // Also disable the delete button while editing to prevent accidents
-        dom.deleteProjectBtn.disabled = isEditing;
-
-        if (isEditing) {
-            dom.projectStatus.focus();
-        }
-    }
-
-    function updateProjectDetails(projectName) {
-        if (!dom.projectDetailsForm) return;
-        setProjectEditMode(false); // Always reset edit mode on change
-
-        if (!projectName) {
-            dom.projectDetailsForm.classList.add('hidden');
-            dom.deleteProjectBtn.hidden = true; // Hide delete if no project is selected
-            return;
-        }
-
-        const project = allProjects[projectName];
-        if (project) {
-            dom.projectStatus.value = project.status || 'Not Started';
-            dom.projectStartDate.value = project.startDate || '';
-            dom.projectEndDate.value = project.endDate || '';
-            dom.projectDescription.value = project.description || '';
-
-            // Store for cancellation
-            originalProjectData = { ...project };
-
-            dom.projectDetailsForm.classList.remove('hidden');
-            dom.deleteProjectBtn.hidden = false; // Show the delete button
-        } else {
-            dom.projectDetailsForm.classList.add('hidden');
-            dom.deleteProjectBtn.hidden = true;
-        }
-    }
-
-    async function handleProjectSave() {
-        const selectedName = dom.projectSelector.value;
-
-        if (!allProjects[selectedName]) {
-            showStatusMessage(dom.status, 'No project selected to save.', true);
-            return;
-        }
-
-        // Create the updated project object from form fields
-        const updatedProject = {
-            ...allProjects[selectedName], // Keep original properties, including name
-            status: dom.projectStatus.value,
-            startDate: dom.projectStartDate.value,
-            endDate: dom.projectEndDate.value,
-            description: dom.projectDescription.value.trim(),
-        };
-
-        // Prepare just the details for saving (without the 'name' property which is for internal UI use).
-        const { name, ...detailsToSave } = updatedProject;
-
-        try {
-            // Save only the updated project under its name as the key.
-            // This is more granular and aligns with the key-value nature of the data store.
-            await dataManager.setItem('projects', selectedName, detailsToSave);
-
-            // If save is successful, update the main in-memory state.
-            allProjects[selectedName] = updatedProject;
-            originalProjectData = { ...updatedProject }; // Update original data for cancel functionality
-
-            globalState.isDirty = true;
-            updateGlobalDirtyStatusUI();
-            showStatusMessage(dom.status, 'Project details saved.');
-            setProjectEditMode(false);
-        } catch (error) {
-            console.error('Failed to save project:', error);
-            showStatusMessage(dom.status, 'Error saving project.', true);
-            // No need to revert, as `allProjects` was not modified until after the successful save.
-        }
-    }
-
-    function handleProjectCancelEdit() {
-        // Revert form from stored original data
-        if (originalProjectData.name) {
-            dom.projectStatus.value = originalProjectData.status || 'Not Started';
-            dom.projectStartDate.value = originalProjectData.startDate || '';
-            dom.projectEndDate.value = originalProjectData.endDate || '';
-            dom.projectDescription.value = originalProjectData.description || '';
-        }
-        setProjectEditMode(false);
-    }
-
-    async function handleProjectDelete() {
-        const selectedName = dom.projectSelector.value;
-        if (!selectedName) {
-            showStatusMessage(dom.status, 'No project selected to delete.', true);
-            return;
-        }
-
-        if (!confirm(`Are you sure you want to delete the project "${selectedName}"? This action cannot be undone.`)) {
-            return;
-        }
-
-        try {
-            // Use the generic deleteItem from dataManager
-            await dataManager.deleteItem('projects', selectedName);
-
-            // If the deleted project was the active one, we need to pick a new active project.
-            if (activeProjectName === selectedName) {
-                // Get the remaining projects AFTER deletion
-                delete allProjects[selectedName];
-                const remainingProjectNames = Object.keys(allProjects);
-                const newActiveProjectName = remainingProjectNames.length > 0 ? remainingProjectNames[0] : ''; // Default to first or empty
-                
-                // Update the active project in the data store
-                await dataManager.setItem('system', 'activeProjectName', newActiveProjectName);
-            }
-
-            // Refresh the entire project UI. This will rebuild the selector and update details.
-            await loadProjectData();
-
-            globalState.isDirty = true;
-            updateGlobalDirtyStatusUI();
-            showStatusMessage(dom.status, `Project "${selectedName}" deleted successfully.`);
-        } catch (error) {
-            console.error('Failed to delete project:', error);
-            showStatusMessage(dom.status, 'Error deleting project.', true);
-        }
-    }
-
-    async function loadProjectData() {
-        if (!dom.projectSelector) return;
-        try {
-            // Get all data from the store and select the 'projects' module.
-            const allData = await dataManager.getAllItems();
-            const projectsFromStore = allData.projects || {};
-
-            allProjects = {};
-            Object.entries(projectsFromStore).forEach(([projectName, projectDetails]) => {
-                const details = (typeof projectDetails === 'object' && projectDetails !== null) ? projectDetails : {};
-                // Normalize the project object to guarantee a consistent shape.
-                // This prevents errors from missing properties (e.g., 'description').
-                allProjects[projectName] = {
-                    // 1. Establish a default structure for all projects.
-                    description: '',
-                    status: 'Not Started',
-                    startDate: '',
-                    endDate: '',
-                    // 2. Spread the actual data, overwriting defaults.
-                    ...details,
-                    // 3. Ensure the name is always set correctly, as it's used as the key.
-                    name: projectName,
-                };
-            });
-
-            // The active project name is stored in the 'system' module.
-            activeProjectName = await dataManager.getItem('system', 'activeProjectName');
-
-            // Populate dropdown
-            dom.projectSelector.innerHTML = ''; // Clear existing
-            const noneOption = document.createElement('option');
-            noneOption.value = '';
-            noneOption.textContent = '-- Select a Project --';
-            dom.projectSelector.appendChild(noneOption);
-
-            // Populate the dropdown from the `allProjects` object
-            Object.values(allProjects).forEach(project => {
-                const option = document.createElement('option');
-                option.value = project.name;
-                option.textContent = project.name;
-                if (project.name === activeProjectName) {
-                    option.selected = true;
-                }
-                dom.projectSelector.appendChild(option);
-            });
-
-            // Show details for the initially loaded project
-            updateProjectDetails(activeProjectName);
-        } catch (error) {
-            console.error('Failed to load project data:', error);
-            showStatusMessage(dom.status, 'Error loading project data.', true);
-        }
-    }
-
-    async function handleProjectChange() {
-        const selectedName = dom.projectSelector.value;
-        updateProjectDetails(selectedName); // This will now populate the form and reset edit mode
-
-        if (selectedName === activeProjectName) return; // No change to save
-
-        try {
-            await dataManager.setItem('system', 'activeProjectName', selectedName);
-            activeProjectName = selectedName; // Update local state
-            globalState.isDirty = true;
-            updateGlobalDirtyStatusUI();
-            showStatusMessage(dom.status, 'Active project updated.');
-        } catch (error) {
-            console.error('Failed to save active project:', error);
-            showStatusMessage(dom.status, 'Error saving active project.', true);
-        }
-    }
-
-    // --- Modal Functions ---
-    function openAddProjectModal() {
-        if (dom.addProjectModal) {
-            dom.addProjectForm.reset();
-            dom.addProjectModal.classList.add('active');
-            document.getElementById('new-project-name').focus();
-        }
-    }
-
-    function closeAddProjectModal() {
-        if (dom.addProjectModal) {
-            dom.addProjectModal.classList.remove('active');
-        }
-    }
-
-    async function handleAddProjectSave(e) {
-        e.preventDefault();
-        const newName = document.getElementById('new-project-name').value.trim();
-        if (!newName) {
-            alert('Project Name is required.');
-            return;
-        }
-        // Enforce uniqueness for new projects
-        if (allProjects[newName]) {
-            alert(`A project named "${newName}" already exists. Please choose a unique name.`);
-            return;
-        }
-
-        const newProjectDetails = {
-            startDate: document.getElementById('new-project-start-date').value,
-            endDate: document.getElementById('new-project-end-date').value,
-            status: document.getElementById('new-project-status').value,
-            description: document.getElementById('new-project-description').value.trim(),
-        };
-
-        try {
-            // Save all data changes to the persistent store first.
-            // Save just the new project details under the new name as the key.
-            await dataManager.setItem('projects', newName, newProjectDetails);
-            await dataManager.setItem('system', 'activeProjectName', newName);
-
-            // --- If save is successful, simply reload all project data to refresh the UI ---
-            await loadProjectData(); // This will rebuild the dropdown and select the new project.
-
-            globalState.isDirty = true;
-            updateGlobalDirtyStatusUI();
-            showStatusMessage(dom.status, 'New project added successfully.');
-            closeAddProjectModal();
-        } catch (error) {
-            console.error('Failed to add project:', error);
-            showStatusMessage(dom.status, 'Error adding project.', true);
-        }
-    }
-
     // Attach Event Listeners
     dom.editBtn.addEventListener('click', () => setEditMode(true));
     dom.cancelBtn.addEventListener('click', handleCancel);
@@ -732,20 +454,298 @@ function setupSystemView() {
             }
         });
     }
-    
-    // Project Listeners
-    if (dom.projectSelector) {
-        dom.projectSelector.addEventListener('change', handleProjectChange);
+
+    // Initial Load
+    loadUserData();
+    console.log(`[setupSystemView] END. currentView is: '${currentView}'.`);
+
+    // Return a "teardown" function to be called before navigating away
+    return () => {
+        console.log(`[Teardown Guard] Checking for unsaved changes in 'system' view.`);
+        if (isFormDirty()) {
+            console.warn(`[Teardown Guard] Form is dirty. Prompting user.`);
+            return confirm('You have unsaved changes for the User. Are you sure you want to leave?');
+        }
+        console.log(`[Teardown Guard] Form is clean. Allowing navigation.`);
+        // We don't need a guard for project changes because they save immediately or have their own cancel flow.
+        return true; // OK to navigate away
+    };
+}
+
+// --- Projects View ---
+function setupProjectsView() {
+    console.log(`[setupProjectsView] START.`);
+    const dom = {
+        // Project section elements
+        projectSelector: document.getElementById('project-selector'),
+        projectDetailsForm: document.getElementById('project-details-form'),
+        projectStatus: document.getElementById('project-status'),
+        projectStartDate: document.getElementById('project-start-date'),
+        projectEndDate: document.getElementById('project-end-date'),
+        projectDescription: document.getElementById('project-description'),
+        projectInputs: document.querySelectorAll('#project-details-form input, #project-details-form select, #project-details-form textarea'),
+        editProjectBtn: document.getElementById('edit-project-btn'),
+        saveProjectBtn: document.getElementById('save-project-btn'),
+        cancelProjectBtn: document.getElementById('cancel-project-btn'),
+        deleteProjectBtn: document.getElementById('delete-project-btn'),
+        addProjectBtn: document.getElementById('add-project-btn'),
+        statusMessage: document.getElementById('project-status-message'),
+
+        // Modal elements are global but managed here
+        addProjectModal: document.getElementById('add-project-modal'),
+        addProjectForm: document.getElementById('add-project-form'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+        modalCancelBtn: document.getElementById('modal-cancel-btn'),
+    };
+
+    let allProjects = {};
+    let activeProjectName = null;
+    let originalProjectData = {};
+
+    function showStatusMessage(message, isError = false, duration = 3000) {
+        if (!dom.statusMessage) return;
+        dom.statusMessage.textContent = message;
+        dom.statusMessage.classList.remove('hidden');
+        dom.statusMessage.style.color = isError ? 'var(--danger-color)' : 'green';
+        setTimeout(() => { dom.statusMessage.classList.add('hidden'); }, duration);
     }
-    if (dom.editProjectBtn) {
-        dom.editProjectBtn.addEventListener('click', () => setProjectEditMode(true));
+
+    function setProjectEditMode(isEditing) {
+        if (!dom.projectInputs) return;
+        dom.projectInputs.forEach(input => input.disabled = !isEditing);
+
+        dom.editProjectBtn.hidden = isEditing;
+        dom.saveProjectBtn.hidden = !isEditing;
+        dom.cancelProjectBtn.hidden = !isEditing;
+
+        dom.saveProjectBtn.disabled = !isEditing;
+        dom.cancelProjectBtn.disabled = !isEditing;
+
+        dom.projectSelector.disabled = isEditing;
+        dom.addProjectBtn.disabled = isEditing;
+        dom.deleteProjectBtn.disabled = isEditing;
+
+        if (isEditing) {
+            dom.projectStatus.focus();
+        }
     }
-    if (dom.cancelProjectBtn) {
-        dom.cancelProjectBtn.addEventListener('click', handleProjectCancelEdit);
+
+    function updateProjectDetails(projectName) {
+        if (!dom.projectDetailsForm) return;
+        setProjectEditMode(false);
+
+        if (!projectName) {
+            dom.projectDetailsForm.classList.add('hidden');
+            dom.deleteProjectBtn.hidden = true;
+            return;
+        }
+
+        const project = allProjects[projectName];
+        if (project) {
+            dom.projectStatus.value = project.status || 'Not Started';
+            dom.projectStartDate.value = project.startDate || '';
+            dom.projectEndDate.value = project.endDate || '';
+            dom.projectDescription.value = project.description || '';
+
+            originalProjectData = { ...project };
+
+            dom.projectDetailsForm.classList.remove('hidden');
+            dom.deleteProjectBtn.hidden = false;
+        } else {
+            dom.projectDetailsForm.classList.add('hidden');
+            dom.deleteProjectBtn.hidden = true;
+        }
     }
-    if (dom.deleteProjectBtn) {
-        dom.deleteProjectBtn.addEventListener('click', handleProjectDelete);
+
+    async function handleProjectSave() {
+        const selectedName = dom.projectSelector.value;
+
+        if (!allProjects[selectedName]) {
+            showStatusMessage('No project selected to save.', true);
+            return;
+        }
+
+        const updatedProject = {
+            ...allProjects[selectedName],
+            status: dom.projectStatus.value,
+            startDate: dom.projectStartDate.value,
+            endDate: dom.projectEndDate.value,
+            description: dom.projectDescription.value.trim(),
+        };
+
+        const { name, ...detailsToSave } = updatedProject;
+
+        try {
+            await dataManager.setItem('projects', selectedName, detailsToSave);
+            allProjects[selectedName] = updatedProject;
+            originalProjectData = { ...updatedProject };
+
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatusMessage('Project details saved.');
+            setProjectEditMode(false);
+        } catch (error) {
+            console.error('Failed to save project:', error);
+            showStatusMessage('Error saving project.', true);
+        }
     }
+
+    function handleProjectCancelEdit() {
+        if (originalProjectData.name) {
+            dom.projectStatus.value = originalProjectData.status || 'Not Started';
+            dom.projectStartDate.value = originalProjectData.startDate || '';
+            dom.projectEndDate.value = originalProjectData.endDate || '';
+            dom.projectDescription.value = originalProjectData.description || '';
+        }
+        setProjectEditMode(false);
+    }
+
+    async function handleProjectDelete() {
+        const selectedName = dom.projectSelector.value;
+        if (!selectedName) {
+            showStatusMessage('No project selected to delete.', true);
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete the project "${selectedName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await dataManager.deleteItem('projects', selectedName);
+
+            if (activeProjectName === selectedName) {
+                delete allProjects[selectedName];
+                const remainingProjectNames = Object.keys(allProjects);
+                const newActiveProjectName = remainingProjectNames.length > 0 ? remainingProjectNames[0] : '';
+                await dataManager.setItem('system', 'activeProjectName', newActiveProjectName);
+            }
+
+            await loadProjectData();
+
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatusMessage(`Project "${selectedName}" deleted successfully.`);
+        } catch (error) {
+            console.error('Failed to delete project:', error);
+            showStatusMessage('Error deleting project.', true);
+        }
+    }
+
+    async function loadProjectData() {
+        if (!dom.projectSelector) return;
+        try {
+            const allData = await dataManager.getAllItems();
+            const projectsFromStore = allData.projects || {};
+
+            allProjects = {};
+            Object.entries(projectsFromStore).forEach(([projectName, projectDetails]) => {
+                const details = (typeof projectDetails === 'object' && projectDetails !== null) ? projectDetails : {};
+                allProjects[projectName] = {
+                    description: '',
+                    status: 'Not Started',
+                    startDate: '',
+                    endDate: '',
+                    ...details,
+                    name: projectName,
+                };
+            });
+
+            activeProjectName = await dataManager.getItem('system', 'activeProjectName');
+
+            dom.projectSelector.innerHTML = '';
+            const noneOption = document.createElement('option');
+            noneOption.value = '';
+            noneOption.textContent = '-- Select a Project --';
+            dom.projectSelector.appendChild(noneOption);
+
+            Object.values(allProjects).forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.name;
+                option.textContent = project.name;
+                if (project.name === activeProjectName) {
+                    option.selected = true;
+                }
+                dom.projectSelector.appendChild(option);
+            });
+
+            updateProjectDetails(activeProjectName);
+        } catch (error) {
+            console.error('Failed to load project data:', error);
+            showStatusMessage('Error loading project data.', true);
+        }
+    }
+
+    async function handleProjectChange() {
+        const selectedName = dom.projectSelector.value;
+        updateProjectDetails(selectedName);
+
+        if (selectedName === activeProjectName) return;
+
+        try {
+            await dataManager.setItem('system', 'activeProjectName', selectedName);
+            activeProjectName = selectedName;
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatusMessage('Active project updated.');
+        } catch (error) {
+            console.error('Failed to save active project:', error);
+            showStatusMessage('Error saving active project.', true);
+        }
+    }
+
+    function openAddProjectModal() {
+        if (dom.addProjectModal) {
+            dom.addProjectForm.reset();
+            dom.addProjectModal.classList.add('active');
+            document.getElementById('new-project-name').focus();
+        }
+    }
+
+    function closeAddProjectModal() {
+        if (dom.addProjectModal) {
+            dom.addProjectModal.classList.remove('active');
+        }
+    }
+
+    async function handleAddProjectSave(e) {
+        e.preventDefault();
+        const newName = document.getElementById('new-project-name').value.trim();
+        if (!newName) {
+            alert('Project Name is required.');
+            return;
+        }
+        if (allProjects[newName]) {
+            alert(`A project named "${newName}" already exists. Please choose a unique name.`);
+            return;
+        }
+
+        const newProjectDetails = {
+            startDate: document.getElementById('new-project-start-date').value,
+            endDate: document.getElementById('new-project-end-date').value,
+            status: document.getElementById('new-project-status').value,
+            description: document.getElementById('new-project-description').value.trim(),
+        };
+
+        try {
+            await dataManager.setItem('projects', newName, newProjectDetails);
+            await dataManager.setItem('system', 'activeProjectName', newName);
+            await loadProjectData();
+            globalState.isDirty = true;
+            updateGlobalDirtyStatusUI();
+            showStatusMessage('New project added successfully.');
+            closeAddProjectModal();
+        } catch (error) {
+            console.error('Failed to add project:', error);
+            showStatusMessage('Error adding project.', true);
+        }
+    }
+
+    // Attach Event Listeners
+    if (dom.projectSelector) dom.projectSelector.addEventListener('change', handleProjectChange);
+    if (dom.editProjectBtn) dom.editProjectBtn.addEventListener('click', () => setProjectEditMode(true));
+    if (dom.cancelProjectBtn) dom.cancelProjectBtn.addEventListener('click', handleProjectCancelEdit);
+    if (dom.deleteProjectBtn) dom.deleteProjectBtn.addEventListener('click', handleProjectDelete);
     if (dom.projectDetailsForm) {
         dom.projectDetailsForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -760,20 +760,12 @@ function setupSystemView() {
     if (dom.addProjectForm) dom.addProjectForm.addEventListener('submit', handleAddProjectSave);
 
     // Initial Load
-    loadUserData();
     loadProjectData();
-    console.log(`[setupSystemView] END. currentView is: '${currentView}'.`);
+    console.log(`[setupProjectsView] END.`);
 
-    // Return a "teardown" function to be called before navigating away
     return () => {
-        console.log(`[Teardown Guard] Checking for unsaved changes in 'system' view.`);
-        if (isFormDirty()) {
-            console.warn(`[Teardown Guard] Form is dirty. Prompting user.`);
-            return confirm('You have unsaved changes for the User. Are you sure you want to leave?');
-        }
-        console.log(`[Teardown Guard] Form is clean. Allowing navigation.`);
-        // We don't need a guard for project changes because they save immediately or have their own cancel flow.
-        return true; // OK to navigate away
+        // No teardown guard needed as project edits are self-contained.
+        return true;
     };
 }
 

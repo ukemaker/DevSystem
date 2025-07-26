@@ -1,0 +1,54 @@
+<div class="view-container">
+    <h1>Projects</h1>
+
+    <div class="card card-constrained">
+        <div class="card-header">
+            <h2>Active Project</h2>
+            <button type="button" id="add-project-btn" class="btn-primary">Add New Project</button>
+        </div>
+        <div class="form-field">
+            <label for="project-selector">Project</label>
+            <select id="project-selector" name="project-selector"></select>
+        </div>
+    </div>
+
+    <form id="project-details-form" class="hidden">
+        <div class="card card-constrained">
+            <div class="project-details-grid">
+                <div class="form-field full-width">
+                    <label for="project-description">Description</label>
+                    <textarea id="project-description" rows="3" placeholder="A brief summary of the project..."
+                        disabled></textarea>
+                </div>
+                <div class="form-row full-width">
+                    <div class="form-field">
+                        <label for="project-status">Status</label>
+                        <select id="project-status" disabled>
+                            <option value="Not Started">Not Started</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="On Hold">On Hold</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="project-start-date">Start Date</label>
+                        <input type="date" id="project-start-date" disabled>
+                    </div>
+                    <div class="form-field">
+                        <label for="project-end-date">End Date</label>
+                        <input type="date" id="project-end-date" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <div class="button-group">
+                    <button type="button" id="edit-project-btn" class="btn-primary">Edit</button>
+                    <button type="submit" id="save-project-btn" class="btn-primary" disabled hidden>Save Project</button>
+                    <button type="button" id="cancel-project-btn" disabled hidden>Cancel</button>
+                </div>
+                <button type="button" id="delete-project-btn" class="btn-danger" disabled hidden>Delete</button>
+            </div>
+            <p id="project-status-message" role="status" aria-live="polite" class="hidden"></p>
+        </div>
+    </form>
+</div>
