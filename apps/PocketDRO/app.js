@@ -1097,7 +1097,6 @@ function setupMachineView() {
         addForm: document.getElementById('add-machine-form'),
         modalCloseBtn: document.getElementById('machine-modal-close-btn'),
         modalCancelBtn: document.getElementById('machine-modal-cancel-btn'),
-        dataCanvas: document.getElementById('machine-data-canvas'),
         visualizationCanvas: document.getElementById('machine-visualization-canvas'),
     };
 
@@ -1214,45 +1213,6 @@ function setupMachineView() {
         dom.status.classList.remove('hidden');
         dom.status.style.color = isError ? 'var(--danger-color)' : 'green';
         setTimeout(() => { dom.status.classList.add('hidden'); }, duration);
-    }
-
-    /**
-     * Renders the key-value pairs of machine data onto the 2D canvas.
-     * This serves as a placeholder and data-binding test for the visualization.
-     * @param {object | null} machineData The machine data object to display.
-     */
-    function updateDataCanvas(machineData) {
-        const canvas = dom.dataCanvas;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        
-        // Match canvas resolution to its display size to avoid blurry text
-        const rect = canvas.getBoundingClientRect();
-        if (canvas.width !== rect.width || canvas.height !== rect.height) {
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-        }
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        if (!machineData) {
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#888';
-            ctx.textAlign = 'center';
-            ctx.fillText('No machine selected', canvas.width / 2, canvas.height / 2);
-            return;
-        }
-
-        ctx.fillStyle = '#333';
-        ctx.textAlign = 'left';
-        ctx.font = 'bold 16px Arial';
-        ctx.fillText('Selected Machine Data:', 15, 25);
-
-        ctx.font = '14px "Courier New", Courier, monospace';
-        Object.entries(machineData).forEach(([key, value], index) => {
-            ctx.fillText(`${key.padEnd(20)}: ${value}`, 15, 55 + (index * 20));
-        });
     }
 
     /**
@@ -1375,7 +1335,6 @@ function setupMachineView() {
         // For the initial draw, generate data directly from the reliable machine object.
         const { geometryData, labelData } = getVisualizationData(machine);
         if (visualizer) visualizer.update(geometryData, labelData);
-        updateDataCanvas(labelData);
 
         if (machine) {
             originalMachineData = JSON.parse(JSON.stringify(machine)); // Deep copy for cancellation
@@ -1622,7 +1581,6 @@ function setupMachineView() {
                 // For live updates, read data from the form by calling without an argument.
                 const { geometryData, labelData } = getVisualizationData();
                 if (visualizer) visualizer.update(geometryData, labelData);
-                updateDataCanvas(labelData);
             }
         });
     });

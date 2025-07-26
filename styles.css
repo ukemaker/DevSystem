@@ -576,16 +576,6 @@ tr:hover {
 }
 
 /* --- 9. Visualization Specific --- */
-.visualization-container {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-}
-
-.visualization-container > .card {
-    flex: 1;
-}
-
 .visualization-wrapper {
     position: relative;
     width: 100%;
@@ -596,8 +586,7 @@ tr:hover {
     overflow: hidden; /* Hide anything that might spill out */
 }
 
-#machine-visualization-canvas,
-#machine-data-canvas {
+#machine-visualization-canvas {
     position: absolute;
     top: 0;
     left: 0;
