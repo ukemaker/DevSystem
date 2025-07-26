@@ -14,8 +14,7 @@ const navButtons = {
     // Settings Submenu
     'system': document.getElementById('nav-system'),
     'machine': document.getElementById('nav-machine'),
-    'display': document.getElementById('nav-display'),
-    'print': document.getElementById('nav-print'),
+    'output': document.getElementById('nav-output'),
     'program': document.getElementById('nav-program'),
 };
 const settingsToggle = document.getElementById('nav-settings-toggle');
@@ -109,6 +108,7 @@ const viewInitializers = {
     'program': setupProgramView,
     'system': setupSystemView,
     'machine': setupMachineView,
+    'output': setupOutputView,
 };
 
 async function loadView(viewName, onLoadCallback = null) {
@@ -232,6 +232,12 @@ async function handleResetToDefaults() {
         console.error('Failed to reset data to defaults:', error);
         throw error; // Re-throw to be caught by the caller
     }
+}
+
+// --- Output Settings View ---
+function setupOutputView() {
+    console.log(`[setupOutputView] START.`);
+    return null; // No teardown needed for this simple view
 }
 // --- System Settings View ---
 function setupSystemView() {
@@ -381,16 +387,16 @@ function setupSystemView() {
         dom.editProjectBtn.hidden = isEditing;
         dom.saveProjectBtn.hidden = !isEditing;
         dom.cancelProjectBtn.hidden = !isEditing;
-        dom.deleteProjectBtn.hidden = !isEditing;
 
         // Enable/disable buttons
         dom.saveProjectBtn.disabled = !isEditing;
         dom.cancelProjectBtn.disabled = !isEditing;
-        dom.deleteProjectBtn.disabled = !isEditing;
 
         // Disable project selector and add button while editing
         dom.projectSelector.disabled = isEditing;
         dom.addProjectBtn.disabled = isEditing;
+        // Also disable the delete button while editing to prevent accidents
+        dom.deleteProjectBtn.disabled = isEditing;
 
         if (isEditing) {
             dom.projectStatus.focus();
@@ -403,6 +409,7 @@ function setupSystemView() {
 
         if (!projectName) {
             dom.projectDetailsForm.classList.add('hidden');
+            dom.deleteProjectBtn.hidden = true; // Hide delete if no project is selected
             return;
         }
 
@@ -417,8 +424,10 @@ function setupSystemView() {
             originalProjectData = { ...project };
 
             dom.projectDetailsForm.classList.remove('hidden');
+            dom.deleteProjectBtn.hidden = false; // Show the delete button
         } else {
             dom.projectDetailsForm.classList.add('hidden');
+            dom.deleteProjectBtn.hidden = true;
         }
     }
 
@@ -1059,8 +1068,8 @@ class MachineVisualizer {
     }
 }
 
-// --- Machine Settings View ---
-// --- Machine Settings View ---
+// --- Machines View ---
+// --- Machines View ---
 function setupMachineView() {
     console.log(`[setupMachineView] START.`);
     // --- DOM Cache ---

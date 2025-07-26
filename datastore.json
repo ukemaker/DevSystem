@@ -15,8 +15,8 @@
     "city": "BERKELEY",
     "state": "CA",
     "phone": "5108598532",
-    "activeProjectName": "Your Project",
-    "activeMachineName": "Milling Machine"
+    "activeProjectName": "PocketDRO",
+    "activeMachineName": "Bridgeport Vertical Mill"
   },
   "default-system": {
     "name": "Michael DaSilva",
@@ -30,11 +30,11 @@
     "activeProjectName": "Your Project"
   },
   "projects": {
-    "Your Project": {
-      "description": "A sample project for the PocketDRO application.",
+    "PocketDRO": {
+      "description": "Base project to hold details for each part.",
       "status": "In Progress",
-      "startDate": "2024-01-01",
-      "endDate": ""
+      "startDate": "2025-07-25",
+      "endDate": "2025-07-31"
     }
   },
   "default-projects": {
@@ -95,7 +95,7 @@
       "angleUnits": "degrees",
       "positiveX": "right",
       "positiveY": "front",
-      "positiveZ": "down",
+      "positiveZ": "up",
       "xTravel": 12,
       "yTravel": 6,
       "zTravel": 3,
@@ -105,19 +105,19 @@
     },
     "Bridgeport Vertical Mill": {
       "type": "Vertical mill",
-      "description": "",
+      "description": "Bridgeport",
       "inputUnits": "inch",
-      "angleUnits": "degrees",
       "precision": 3,
+      "angleUnits": "degrees",
+      "positiveX": "right",
+      "positiveY": "front",
+      "positiveZ": "down",
       "xTravel": 10,
       "yTravel": 5,
       "zTravel": 4,
-      "positiveX": "right",
-      "positiveY": "front",
-      "positiveZ": "up",
-      "fourthAxis": "x",
+      "fourthAxis": "z",
       "positiveRotation": "rhr",
-      "rotationZero": "pos-y"
+      "rotationZero": "pos-x"
     },
     "Rong Fu 20": {
       "type": "Vertical mill",
