@@ -576,6 +576,16 @@ tr:hover {
 }
 
 /* --- 9. Visualization Specific --- */
+.visualization-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.visualization-container > .card {
+    flex: 1;
+}
+
 .visualization-wrapper {
     position: relative;
     width: 100%;
@@ -586,11 +596,30 @@ tr:hover {
     overflow: hidden; /* Hide anything that might spill out */
 }
 
-#machine-visualization-canvas {
+#machine-visualization-canvas,
+#machine-data-canvas {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     display: block; /* Remove any default bottom margin */
+}
+
+.axis-label {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; /* White outline */
+    pointer-events: none; /* Make sure labels don't interfere with mouse controls */
+}
+
+.dimension-label {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #333;
+    background-color: rgba(255, 255, 255, 0.75);
+    padding: 2px 5px;
+    border-radius: 3px;
+    pointer-events: none;
 }
